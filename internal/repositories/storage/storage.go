@@ -2,17 +2,25 @@ package storage
 
 import (
 	"context"
+	"gophkeeper/internal/repositories/data"
 )
 
 type (
 	// EncryptedDataWriter - интерфейс для добавления зашифрованных данных хранилище.
 	EncryptedDataWriter interface {
-		AddEncryptedData(ctx context.Context, idUser string, uplink []byte) error // загружаю зашифрованные данные по идентификатору
+		AddEncryptedData(ctx context.Context, idUser string, data data.EncryptedData) (bool, error)     // Для загрузки зашифрованныч данных по id
+		ReplaceEncryptedData(ctx context.Context, idUser string, data data.EncryptedData) (bool, error) // Для замены существующих в хранилищеданные
 	}
 
 	// EncryptedDataReader - интерфейс для выгрузки зашифрованных данных у конкретного пользователя по его id.
 	EncryptedDataReader interface {
-		GetEncryptedData(ctx context.Context, idUser string) ([][]byte, error) // Возвращает слайс данных. Данные в виде зашифрованного слайса байт
+		GetAllEncryptedData(ctx context.Context, idUser string) ([][]data.EncryptedData, error)                  // Возвращает все зашифрованные данные по id
+		GetEncryptedDataByStatus(ctx context.Context, idUser string, status int) ([][]data.EncryptedData, error) // Возвращает зашифрованные данные с указанным статусом.
+	}
+
+	// EncryptedDataDeleter - интерфейс для удаления зашифрованных данных по id пользователя и имени данных.
+	EncryptedDataDeleter interface {
+		DeleteEncryptedData(ctx context.Context, idUser, dataName string) (bool, error)
 	}
 
 	// Starter - интерфейс для инициализации хранилища с зашифрованными данными.

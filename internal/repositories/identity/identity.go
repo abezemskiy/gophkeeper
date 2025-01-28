@@ -16,7 +16,6 @@ type IdentityData struct {
 
 // AuthorizationData - структуоа для авторизационных данных пользователя.
 type AuthorizationData struct {
-	Password string
 	Hash     string
 	ID       string
 }

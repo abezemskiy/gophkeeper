@@ -1,0 +1,309 @@
+package pg
+
+import (
+	"bytes"
+	"context"
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"gophkeeper/internal/repositories/data"
+	"gophkeeper/internal/repositories/identity"
+
+	"github.com/lib/pq"
+)
+
+// Store - реализует интерфейс storage.IStorage и позволяет взаимодествовать с СУБД PostgreSQL.
+type Store struct {
+	// Поле conn содержит объект соединения с СУБД
+	conn *sql.DB
+}
+
+// NewStore - возвращает новый экземпляр PostgreSQL-хранилища.
+func NewStore(conn *sql.DB) *Store {
+	return &Store{
+		conn: conn,
+	}
+}
+
+// Bootstrap - подготавливает БД к работе, создавая необходимы таблицы и индексы.
+func (s Store) Bootstrap(ctx context.Context) error {
+	// запускаю транзакцию
+	tx, err := s.conn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction error, %w", err)
+	}
+
+	// откат транзакции в случае ошибки
+	defer tx.Rollback()
+
+	// создаю таблицу для хранения данных пользователя -------------------------
+	_, err = tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS auth (
+			login varchar(128) PRIMARY KEY,
+			hash varchar(128),
+			id varchar(128)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("create table auth error, %w", err)
+	}
+	// создаю уникальный индекс для логина
+	_, err = tx.ExecContext(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS login ON auth (login)`)
+	if err != nil {
+		return fmt.Errorf("create unique index in auth table error, %w", err)
+	}
+
+	// создаю таблицу для хранения uplinks -----------------------------------------
+	_, err = tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS user_data (
+    		id SERIAL PRIMARY KEY,                 							-- Уникальный идентификатор записи
+    		user_id INT NOT NULL,                  							-- ID пользователя
+    		data_name varchar(128) NOT NULL,               					-- Имя данных
+    		encrypted_data BYTEA[],                							-- Массив зашифрованных данных
+    		status INT NOT NULL,                   							-- Поле статуса
+    		created_at TIMESTAMP NOT NULL DEFAULT now(), 					-- Дата создания данных
+    		updated_at TIMESTAMP NOT NULL DEFAULT now(), 					-- Дата редактирования данных
+
+    		CONSTRAINT unique_user_data UNIQUE (user_id, data_name) 		-- Гарант уникальности имени данных для пользователя
+		)
+	`)
+
+	if err != nil {
+		return fmt.Errorf("create table user_data error, %w", err)
+	}
+	// создаю уникальный индекс для ID пользователя
+	_, err = tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS user_id ON user_data (user_id)`)
+	if err != nil {
+		return fmt.Errorf("create unique index in user_data table error, %w", err)
+	}
+
+	// коммитим транзакцию
+	return tx.Commit()
+}
+
+// Disable - очищает БД, удаляя записи из таблиц.
+// Метод необходим для тестирования, чтобы в процессе удалять тестовые записи.
+func (s Store) Disable(ctx context.Context) error {
+	// запускаем транзакцию
+	tx, err := s.conn.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("begin transaction error, %w", err)
+	}
+	// в случае неупешного коммита все изменения транзакции будут отменены
+	defer tx.Rollback()
+
+	// удаляю все записи в таблице auth----------------------
+	_, err = tx.ExecContext(ctx, `
+		TRUNCATE TABLE auth
+	`)
+	if err != nil {
+		return fmt.Errorf("truncate table auth error, %w", err)
+	}
+
+	// удаляю все записи в таблице user_data----------------------
+	_, err = tx.ExecContext(ctx, `
+		TRUNCATE TABLE user_data
+	`)
+	if err != nil {
+		return fmt.Errorf("truncate table user_data error, %w", err)
+	}
+
+	// коммитим транзакцию
+	return tx.Commit()
+}
+
+// Register - сохраняет в базу данные нового пользователя.
+func (s Store) Register(ctx context.Context, login, hash, id string) error {
+	query := `
+	INSERT INTO auth (login, hash, id)
+	VALUES ($1, $2, $3, $4)
+`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	_, err = stmt.ExecContext(ctx, login, hash, id)
+	return err
+}
+
+// Authorize - получаю авторизационные данные пользователя (хэш) по логину.
+// В случае, если пользователь с переданным логином не найден, возвращается ошибка.
+func (s Store) Authorize(ctx context.Context, login string) (data identity.AuthorizationData, ok bool, err error) {
+	query := `
+		SELECT  hash,
+				id
+		FROM auth
+		WHERE login = $1
+	`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		err = fmt.Errorf("prepare context error, %w", err)
+		return
+	}
+	defer stmt.Close()
+	row := stmt.QueryRowContext(ctx, login)
+
+	err = row.Scan(&data.Hash, &data.ID)
+	if err != nil {
+		// пользователь не найден
+		err = nil
+		ok = false
+		return
+	}
+	ok = true
+	return
+}
+
+// AddEncryptedData - метод для добавления уникальных зашифрованныч данных по id в хранилище.
+// В случае если данные не уникальны, возвращается false.
+func (s Store) AddEncryptedData(ctx context.Context, idUser string, userData data.EncryptedData) (bool, error) {
+	query := `
+		INSERT INTO user_data (user_id, data_name, encrypted_data, status, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, $5, $6)
+	`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return false, fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	_, err = stmt.ExecContext(ctx, idUser, userData.Name, userData.EncryptedData, data.SAVED, userData.CreateDate, userData.EditDate)
+
+	if err != nil {
+		if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23505" {
+			// Код ошибки 23505 - unique_violation
+			// конфликт, уже существуют данные с таким именем для данного пользователя
+			return false, nil
+		}
+		return false, fmt.Errorf("query execution error, %w", err)
+	}
+	return true, nil
+}
+
+// ReplaceEncryptedData - метод для замены старых данных значениями новых.
+// В случае попытки заменить данные, когда данные с текущим id полязователя и именем ещё не загружены в хранилище
+// возвращается false.
+func (s Store) ReplaceEncryptedData(ctx context.Context, idUser string, userData data.EncryptedData) (bool, error) {
+	query := `
+	UPDATE user_data
+	SET encrypted_data = $3, status = $4, updated_at = $5
+	WHERE user_id = $1 AND data_name = $2
+`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return false, fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	result, err := stmt.ExecContext(ctx, idUser, userData.Name, userData.EncryptedData, data.CHANGE, userData.EditDate)
+
+	if err != nil {
+		return false, fmt.Errorf("query execution error, %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		// попытка обновить данные, которых не существует
+		return false, nil
+	}
+	return true, nil
+}
+
+// GetAllEncryptedData - метод для выгрузки всех зашифрованных данных конкретного пользователя.
+func (s Store) GetAllEncryptedData(ctx context.Context, idUser string) ([][]data.EncryptedData, error) {
+	query := `
+	SELETC encrypted_data
+	FROM user_data
+	WHERE user_id = $1
+	`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	rows, err := stmt.QueryContext(ctx, idUser)
+	if err != nil {
+		return nil, fmt.Errorf("query execution error, %w", err)
+	}
+
+	result := make([][]data.EncryptedData, 0)
+	defer rows.Close()
+	for rows.Next() {
+		// получаю массив байт, который представляет собой несколько версий данных в бинарном виде
+		binaryData := make([][]byte, 0)
+
+		err = rows.Scan(&binaryData)
+		if err != nil {
+			return nil, fmt.Errorf("scan error, %w", err)
+		}
+		dataVersions := make([]data.EncryptedData, 0)
+		for _, d := range binaryData {
+			// преобразую данные из бинарного вида в структуру
+			var jsonData data.EncryptedData
+			r := bytes.NewReader(d)
+			if dec := json.NewDecoder(r); dec.Decode(&jsonData) != nil {
+				return nil, fmt.Errorf("decode data error, %w", err)
+			}
+			dataVersions = append(dataVersions, jsonData)
+		}
+		result = append(result, dataVersions)
+	}
+	// проверяем на ошибки
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+// DeleteEncryptedData - метод для удаления данных в хранилище по id пользователя и имени данных.
+// Если происходит попытка удалить несуществующие данные, возвращается false.
+func (s Store) DeleteEncryptedData(ctx context.Context, idUser, dataName string) (bool, error) {
+	query := `
+	DELETE FROM user_data
+	WHERE user_id = $1 AND data_name = $2
+`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return false, fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	result, err := stmt.ExecContext(ctx, idUser, dataName)
+	if err != nil {
+		return false, fmt.Errorf("query execution error, %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		// Запись не найдена, попытка дополнить данные, которых не существует.
+		return false, nil
+	}
+	return true, nil
+}
+
+// AppendEncryptedData - метод для сохранения дополнительной версии существующих данных в случае конфликта.
+func (s Store) AppendEncryptedData(ctx context.Context, idUser, userData data.EncryptedData) (bool, error) {
+	query := `
+	UPDATE user_data
+	SET 
+    	encrypted_data = array_append(encrypted_data, $3), -- Добавление новой версии данных в массив
+    	status = $4, 									   -- Обновление статуса
+    	updated_at = now() 								   -- Обновление времени изменения
+	WHERE user_id = $1 AND data_name = $2
+`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return false, fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	result, err := stmt.ExecContext(ctx, idUser, userData.Name, userData.EncryptedData, data.CONFLICT, userData.CreateDate, userData.EditDate)
+	if err != nil {
+		return false, fmt.Errorf("query execution error, %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		// Запись не найдена, попытка дополнить данные, которых не существует.
+		return false, nil
+	}
+	return true, nil
+}

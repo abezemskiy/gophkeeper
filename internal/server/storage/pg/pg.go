@@ -1,10 +1,8 @@
 package pg
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"gophkeeper/internal/repositories/data"
 	"gophkeeper/internal/repositories/identity"
@@ -57,12 +55,10 @@ func (s Store) Bootstrap(ctx context.Context) error {
 	_, err = tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS user_data (
     		id SERIAL PRIMARY KEY,                 							-- Уникальный идентификатор записи
-    		user_id INT NOT NULL,                  							-- ID пользователя
+    		user_id varchar(128) NOT NULL,                  				-- ID пользователя
     		data_name varchar(128) NOT NULL,               					-- Имя данных
     		encrypted_data BYTEA[],                							-- Массив зашифрованных данных
     		status INT NOT NULL,                   							-- Поле статуса
-    		created_at TIMESTAMP NOT NULL DEFAULT now(), 					-- Дата создания данных
-    		updated_at TIMESTAMP NOT NULL DEFAULT now(), 					-- Дата редактирования данных
 
     		CONSTRAINT unique_user_data UNIQUE (user_id, data_name) 		-- Гарант уникальности имени данных для пользователя
 		)
@@ -116,7 +112,7 @@ func (s Store) Disable(ctx context.Context) error {
 func (s Store) Register(ctx context.Context, login, hash, id string) error {
 	query := `
 	INSERT INTO auth (login, hash, id)
-	VALUES ($1, $2, $3, $4)
+	VALUES ($1, $2, $3)
 `
 	stmt, err := s.conn.PrepareContext(ctx, query)
 	if err != nil {
@@ -159,15 +155,15 @@ func (s Store) Authorize(ctx context.Context, login string) (data identity.Autho
 // В случае если данные не уникальны, возвращается false.
 func (s Store) AddEncryptedData(ctx context.Context, idUser string, userData data.EncryptedData) (bool, error) {
 	query := `
-		INSERT INTO user_data (user_id, data_name, encrypted_data, status, created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO user_data (user_id, data_name, encrypted_data, status)
+		VALUES ($1, $2, $3, $4)
 	`
 	stmt, err := s.conn.PrepareContext(ctx, query)
 	if err != nil {
 		return false, fmt.Errorf("prepare context error, %w", err)
 	}
 	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx, idUser, userData.Name, userData.EncryptedData, data.SAVED, userData.CreateDate, userData.EditDate)
+	_, err = stmt.ExecContext(ctx, idUser, userData.Name, pq.Array([][]byte{userData.EncryptedData}), data.SAVED)
 
 	if err != nil {
 		if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23505" {
@@ -186,7 +182,7 @@ func (s Store) AddEncryptedData(ctx context.Context, idUser string, userData dat
 func (s Store) ReplaceEncryptedData(ctx context.Context, idUser string, userData data.EncryptedData) (bool, error) {
 	query := `
 	UPDATE user_data
-	SET encrypted_data = $3, status = $4, updated_at = $5
+	SET encrypted_data = $3, status = $4
 	WHERE user_id = $1 AND data_name = $2
 `
 	stmt, err := s.conn.PrepareContext(ctx, query)
@@ -194,7 +190,7 @@ func (s Store) ReplaceEncryptedData(ctx context.Context, idUser string, userData
 		return false, fmt.Errorf("prepare context error, %w", err)
 	}
 	defer stmt.Close()
-	result, err := stmt.ExecContext(ctx, idUser, userData.Name, userData.EncryptedData, data.CHANGE, userData.EditDate)
+	result, err := stmt.ExecContext(ctx, idUser, userData.Name, pq.Array([][]byte{userData.EncryptedData}), data.CHANGE)
 
 	if err != nil {
 		return false, fmt.Errorf("query execution error, %w", err)
@@ -211,7 +207,8 @@ func (s Store) ReplaceEncryptedData(ctx context.Context, idUser string, userData
 // GetAllEncryptedData - метод для выгрузки всех зашифрованных данных конкретного пользователя.
 func (s Store) GetAllEncryptedData(ctx context.Context, idUser string) ([][]data.EncryptedData, error) {
 	query := `
-	SELETC encrypted_data
+	SELECT  data_name,
+			encrypted_data
 	FROM user_data
 	WHERE user_id = $1
 	`
@@ -231,17 +228,19 @@ func (s Store) GetAllEncryptedData(ctx context.Context, idUser string) ([][]data
 		// получаю массив байт, который представляет собой несколько версий данных в бинарном виде
 		binaryData := make([][]byte, 0)
 
-		err = rows.Scan(&binaryData)
+		// переменная для хранения имени данных
+		var dataName string
+
+		err = rows.Scan(&dataName, pq.Array(&binaryData))
 		if err != nil {
 			return nil, fmt.Errorf("scan error, %w", err)
 		}
-		dataVersions := make([]data.EncryptedData, 0)
+		dataVersions := make([]data.EncryptedData, 0, len(binaryData))
 		for _, d := range binaryData {
 			// преобразую данные из бинарного вида в структуру
-			var jsonData data.EncryptedData
-			r := bytes.NewReader(d)
-			if dec := json.NewDecoder(r); dec.Decode(&jsonData) != nil {
-				return nil, fmt.Errorf("decode data error, %w", err)
+			jsonData := data.EncryptedData{
+				EncryptedData: d,
+				Name:          dataName,
 			}
 			dataVersions = append(dataVersions, jsonData)
 		}
@@ -286,8 +285,7 @@ func (s Store) AppendEncryptedData(ctx context.Context, idUser, userData data.En
 	UPDATE user_data
 	SET 
     	encrypted_data = array_append(encrypted_data, $3), -- Добавление новой версии данных в массив
-    	status = $4, 									   -- Обновление статуса
-    	updated_at = now() 								   -- Обновление времени изменения
+    	status = $4 									   -- Обновление статуса
 	WHERE user_id = $1 AND data_name = $2
 `
 	stmt, err := s.conn.PrepareContext(ctx, query)
@@ -295,7 +293,7 @@ func (s Store) AppendEncryptedData(ctx context.Context, idUser, userData data.En
 		return false, fmt.Errorf("prepare context error, %w", err)
 	}
 	defer stmt.Close()
-	result, err := stmt.ExecContext(ctx, idUser, userData.Name, userData.EncryptedData, data.CONFLICT, userData.CreateDate, userData.EditDate)
+	result, err := stmt.ExecContext(ctx, idUser, userData.Name, pq.Array([][]byte{userData.EncryptedData}), data.CONFLICT)
 	if err != nil {
 		return false, fmt.Errorf("query execution error, %w", err)
 	}

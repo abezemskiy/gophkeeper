@@ -30,8 +30,6 @@ type Data struct {
 
 // EncryptedData - структура зашифрованных данных для хранения в базе данных.
 type EncryptedData struct {
-	EncryptedData []byte    `json:"encrypted_data"`      // поле для хранения зашифрованной полезной нагрузки в виде слайса байт
-	Name          string    `json:"name"`                // уникальное имя сохраняемых данных
-	CreateDate    time.Time `json:"create_data"`         // дата создания данных
-	EditDate      time.Time `json:"edit_date,omitempty"` // дата редактирования данных
+	EncryptedData []byte `json:"encrypted_data"` // поле для хранения зашифрованной полезной нагрузки в виде слайса байт
+	Name          string `json:"name"`           // уникальное имя сохраняемых данных
 }

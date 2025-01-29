@@ -7,7 +7,6 @@ import (
 	"gophkeeper/internal/repositories/data"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -150,7 +149,7 @@ func TestAuthorize(t *testing.T) {
 	}
 }
 
-func AddEncryptedData(t *testing.T) {
+func TestAddEncryptedData(t *testing.T) {
 	// беру адрес тестовой БД из переменной окружения
 	databaseDsn := os.Getenv(envDatabaseName)
 	assert.NotEqual(t, "", databaseDsn)
@@ -177,14 +176,10 @@ func AddEncryptedData(t *testing.T) {
 	{
 		// Test. successful add data--------------------------------
 		encryptedData := []byte("some encrypted data")
-		createDate := time.Now()
-		editDate := time.Now()
 		userID := "test user id"
 		userData := data.EncryptedData{
 			EncryptedData: encryptedData,
 			Name:          "first data",
-			CreateDate:    createDate,
-			EditDate:      editDate,
 		}
 
 		// добавляю новые данные в хранилище
@@ -194,7 +189,7 @@ func AddEncryptedData(t *testing.T) {
 
 		// попытка добавить уже существующие данные
 		ok, err = stor.AddEncryptedData(ctx, userID, userData)
-		require.NoError(t, err)
+		require.Error(t, err)
 		assert.Equal(t, false, ok)
 
 		// добавляю данные с тем-же именем, но для другого пользователя
@@ -204,7 +199,7 @@ func AddEncryptedData(t *testing.T) {
 		assert.Equal(t, true, ok)
 		// проверяю, что данные успешно добавились, ведь теперь не получится их повторно добавить
 		ok, err = stor.AddEncryptedData(ctx, antoherUserID, userData)
-		require.NoError(t, err)
+		require.Error(t, err)
 		assert.Equal(t, false, ok)
 
 		// Проверка хранящихся в БД данных
@@ -213,20 +208,14 @@ func AddEncryptedData(t *testing.T) {
 		checkData := data[0][0]
 		assert.Equal(t, userData.EncryptedData, checkData.EncryptedData)
 		assert.Equal(t, userData.Name, checkData.Name)
-		assert.Equal(t, userData.CreateDate, checkData.CreateDate)
-		assert.Equal(t, userData.EditDate, checkData.EditDate)
 	}
 	{
 		// Test. Context exceeded
 		encryptedData := []byte("some encrypted data")
-		createDate := time.Now()
-		editDate := time.Now()
 		userID := "test user id"
 		userData := data.EncryptedData{
 			EncryptedData: encryptedData,
 			Name:          "first data",
-			CreateDate:    createDate,
-			EditDate:      editDate,
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
@@ -238,7 +227,7 @@ func AddEncryptedData(t *testing.T) {
 	}
 }
 
-func ReplaceEncryptedData(t *testing.T) {
+func TestReplaceEncryptedData(t *testing.T) {
 	// беру адрес тестовой БД из переменной окружения
 	databaseDsn := os.Getenv(envDatabaseName)
 	assert.NotEqual(t, "", databaseDsn)
@@ -265,14 +254,10 @@ func ReplaceEncryptedData(t *testing.T) {
 	{
 		// Test. successful add data--------------------------------
 		encryptedData := []byte("some encrypted data")
-		createDate := time.Now()
-		editDate := time.Now()
 		userID := "test user id"
 		userData := data.EncryptedData{
 			EncryptedData: encryptedData,
 			Name:          "first data",
-			CreateDate:    createDate,
-			EditDate:      editDate,
 		}
 
 		// добавляю новые данные в хранилище
@@ -281,13 +266,9 @@ func ReplaceEncryptedData(t *testing.T) {
 		assert.Equal(t, true, ok)
 
 		// изменяю уже сохраненные данные
-		anotherCreateDate := time.Now()
-		anotherEditDate := time.Now()
 		anotherUserData := data.EncryptedData{
 			EncryptedData: []byte("another test data"),
 			Name:          "first data",
-			CreateDate:    anotherCreateDate,
-			EditDate:      anotherEditDate,
 		}
 
 		ok, err = stor.ReplaceEncryptedData(ctx, userID, anotherUserData)
@@ -300,20 +281,65 @@ func ReplaceEncryptedData(t *testing.T) {
 		checkData := data[0][0]
 		assert.Equal(t, anotherUserData.EncryptedData, checkData.EncryptedData)
 		assert.Equal(t, userData.Name, checkData.Name)
-		assert.Equal(t, anotherUserData.CreateDate, checkData.CreateDate)
-		assert.Equal(t, anotherUserData.EditDate, checkData.EditDate)
 	}
 	{
 		// Test. Context exceeded
+		ctx, cancel := context.WithCancel(context.Background())
+		// отменяю контекст
+		cancel()
+		// пытаюсь изменить данные в хранилище
+		_, err = stor.ReplaceEncryptedData(ctx, "some user id", data.EncryptedData{
+			EncryptedData: []byte("some encrypted data"),
+			Name:          "some data name",
+		})
+		require.Error(t, err)
+	}
+	{
+		// Test. Data does not exist
+		// Попытка исправить данные, которых нет в хранилище
+		encryptedData := []byte("some not exist encrypted data")
+		userID := "test user id"
+		userData := data.EncryptedData{
+			EncryptedData: encryptedData,
+			Name:          "not exist data",
+		}
+		ok, err := stor.ReplaceEncryptedData(ctx, userID, userData)
+		require.NoError(t, err)
+		assert.Equal(t, false, ok)
+	}
+}
+
+func TestGetAllEncryptedData(t *testing.T) {
+	// беру адрес тестовой БД из переменной окружения
+	databaseDsn := os.Getenv(envDatabaseName)
+	assert.NotEqual(t, "", databaseDsn)
+
+	// создаю соединение с базой данных
+	conn, err := sql.Open("pgx", databaseDsn)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	// Проверка соединения с БД
+	ctx := context.Background()
+	err = conn.PingContext(ctx)
+	require.NoError(t, err)
+
+	// создаю экземпляр хранилища
+	stor := NewStore(conn)
+	err = stor.Bootstrap(ctx)
+	require.NoError(t, err)
+
+	// очищаю данные в БД от предыдущих запусков
+	cleanBD(t, databaseDsn, stor)
+	defer cleanBD(t, databaseDsn, stor)
+
+	{
+		// Test. successful add data--------------------------------
 		encryptedData := []byte("some encrypted data")
-		createDate := time.Now()
-		editDate := time.Now()
 		userID := "test user id"
 		userData := data.EncryptedData{
 			EncryptedData: encryptedData,
 			Name:          "first data",
-			CreateDate:    createDate,
-			EditDate:      editDate,
 		}
 
 		// добавляю новые данные в хранилище
@@ -321,28 +347,30 @@ func ReplaceEncryptedData(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, true, ok)
 
-		ctx, cancel := context.WithCancel(context.Background())
-		// отменяю контекст
-		cancel()
-		// пытаюсь изменить данные в хранилище
-		_, err = stor.ReplaceEncryptedData(ctx, userID, userData)
-		require.Error(t, err)
-	}
-	{
-		// Test. Data does not exist
-		// Попытка исправить данные, которых нет в хранилище
-		encryptedData := []byte("some encrypted data")
-		createDate := time.Now()
-		editDate := time.Now()
-		userID := "test user id"
-		userData := data.EncryptedData{
-			EncryptedData: encryptedData,
-			Name:          "first data",
-			CreateDate:    createDate,
-			EditDate:      editDate,
-		}
-		ok, err := stor.ReplaceEncryptedData(ctx, userID, userData)
+		// Проверка хранящихся в БД данных
+		data, err := stor.GetAllEncryptedData(ctx, userID)
 		require.NoError(t, err)
-		assert.Equal(t, false, ok)
+		assert.Equal(t, 1, len(data))
+		assert.Equal(t, 1, len(data[0]))
+
+		checkData := data[0][0]
+		assert.Equal(t, userData.EncryptedData, checkData.EncryptedData)
+		assert.Equal(t, userData.Name, checkData.Name)
+
+		// Добавляю такие-же данные, но для другого пользователя и проверяю их наличие в хранилище
+		anotherUserID := "another test user id"
+		ok, err = stor.AddEncryptedData(ctx, anotherUserID, userData)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		// Проверка хранящихся в БД данных
+		anotherData, err := stor.GetAllEncryptedData(ctx, anotherUserID)
+		require.NoError(t, err)
+		assert.Equal(t, 1, len(anotherData))
+		assert.Equal(t, 1, len(anotherData[0]))
+
+		anotherCheckData := anotherData[0][0]
+		assert.Equal(t, userData.EncryptedData, anotherCheckData.EncryptedData)
+		assert.Equal(t, userData.Name, anotherCheckData.Name)
 	}
 }

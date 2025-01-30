@@ -163,7 +163,7 @@ func (s Store) AddEncryptedData(ctx context.Context, idUser string, userData dat
 		return false, fmt.Errorf("prepare context error, %w", err)
 	}
 	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx, idUser, userData.Name, pq.Array([][]byte{userData.EncryptedData}), data.SAVED)
+	_, err = stmt.ExecContext(ctx, idUser, userData.Name, [][]byte{userData.EncryptedData}, data.SAVED)
 
 	if err != nil {
 		if pgErr, ok := err.(*pq.Error); ok && pgErr.Code == "23505" {
@@ -254,6 +254,56 @@ func (s Store) GetAllEncryptedData(ctx context.Context, idUser string) ([][]data
 	return result, nil
 }
 
+// GetEncryptedDataByStatus - метод для выгрузки всех зашифрованных данных конкретного пользователя с определенным статусом.
+func (s Store) GetEncryptedDataByStatus(ctx context.Context, idUser string, status int) ([][]data.EncryptedData, error) {
+	query := `
+	SELECT  data_name,
+			encrypted_data
+	FROM user_data
+	WHERE user_id = $1 AND status = $2
+	`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	rows, err := stmt.QueryContext(ctx, idUser, status)
+	if err != nil {
+		return nil, fmt.Errorf("query execution error, %w", err)
+	}
+
+	result := make([][]data.EncryptedData, 0)
+	defer rows.Close()
+	for rows.Next() {
+		// получаю массив байт, который представляет собой несколько версий данных в бинарном виде
+		binaryData := make([][]byte, 0)
+
+		// переменная для хранения имени данных
+		var dataName string
+
+		err = rows.Scan(&dataName, pq.Array(&binaryData))
+		if err != nil {
+			return nil, fmt.Errorf("scan error, %w", err)
+		}
+		dataVersions := make([]data.EncryptedData, 0, len(binaryData))
+		for _, d := range binaryData {
+			// преобразую данные из бинарного вида в структуру
+			jsonData := data.EncryptedData{
+				EncryptedData: d,
+				Name:          dataName,
+			}
+			dataVersions = append(dataVersions, jsonData)
+		}
+		result = append(result, dataVersions)
+	}
+	// проверяем на ошибки
+	err = rows.Err()
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
 // DeleteEncryptedData - метод для удаления данных в хранилище по id пользователя и имени данных.
 // Если происходит попытка удалить несуществующие данные, возвращается false.
 func (s Store) DeleteEncryptedData(ctx context.Context, idUser, dataName string) (bool, error) {
@@ -280,7 +330,7 @@ func (s Store) DeleteEncryptedData(ctx context.Context, idUser, dataName string)
 }
 
 // AppendEncryptedData - метод для сохранения дополнительной версии существующих данных в случае конфликта.
-func (s Store) AppendEncryptedData(ctx context.Context, idUser, userData data.EncryptedData) (bool, error) {
+func (s Store) AppendEncryptedData(ctx context.Context, idUser string, userData data.EncryptedData) (bool, error) {
 	query := `
 	UPDATE user_data
 	SET 
@@ -293,7 +343,7 @@ func (s Store) AppendEncryptedData(ctx context.Context, idUser, userData data.En
 		return false, fmt.Errorf("prepare context error, %w", err)
 	}
 	defer stmt.Close()
-	result, err := stmt.ExecContext(ctx, idUser, userData.Name, pq.Array([][]byte{userData.EncryptedData}), data.CONFLICT)
+	result, err := stmt.ExecContext(ctx, idUser, userData.Name, userData.EncryptedData, data.CONFLICT)
 	if err != nil {
 		return false, fmt.Errorf("query execution error, %w", err)
 	}

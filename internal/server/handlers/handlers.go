@@ -176,6 +176,7 @@ func AddEncryptedData(res http.ResponseWriter, req *http.Request, stor storage.I
 		return
 	}
 
+	// Добавляю новые данные в хранилище
 	ok, err := stor.AddEncryptedData(req.Context(), id, data)
 	if err != nil {
 		logger.ServerLog.Error("adding data to storage error", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
@@ -190,4 +191,42 @@ func AddEncryptedData(res http.ResponseWriter, req *http.Request, stor storage.I
 
 	res.WriteHeader(http.StatusOK)
 	logger.ServerLog.Debug("successful write encode data to storage")
+}
+
+// ReplaceEncryptedData - хэндлер для замены старых данных значениями новых.
+// В случае попытки заменить данные, когда данные с текущим id полязователя и именем ещё не загружены в хранилище
+// возвращается ошибка.
+func ReplaceEncryptedData(res http.ResponseWriter, req *http.Request, stor storage.IEncryptedServerStorage){
+	// получаю id пользователя из контекста
+	id, ok := req.Context().Value(auth.UserIDKey).(string)
+	if !ok {
+		logger.ServerLog.Error("user ID not found in context", zap.String("address", req.URL.String()))
+		http.Error(res, "user ID not found in context", http.StatusInternalServerError)
+		return
+	}
+	defer req.Body.Close()
+
+	// Сериализую данные из запроса клиента
+	var newData data.EncryptedData
+	if err := json.NewDecoder(req.Body).Decode(&newData); err != nil {
+		logger.ServerLog.Error("can't parse data from request", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
+		http.Error(res, "can't parse data from request", http.StatusInternalServerError)
+		return
+	}
+
+	// заменяю старые данные новыми в хранилище
+	ok, err := stor.ReplaceEncryptedData(req.Context(), id, newData)
+	if err != nil {
+		logger.ServerLog.Error("replace data in storage error", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
+		http.Error(res, fmt.Errorf("replace data in storage error, %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+	if !ok {
+		logger.ServerLog.Error("data does not exist", zap.String("address", req.URL.String()))
+		http.Error(res, "data does not exist", http.StatusNotFound)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
+	logger.ServerLog.Debug("successful replace encode data in storage")
 }

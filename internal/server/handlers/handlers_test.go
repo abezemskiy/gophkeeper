@@ -533,3 +533,140 @@ func TestAddEncryptedData(t *testing.T) {
 		})
 	}
 }
+
+func TestReplaceEncryptedData(t *testing.T) {
+	// регистрирую мок хранилища данных пользователей
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	m := mocks.NewMockIEncryptedServerStorage(ctrl)
+
+	// Тест с успешным редактированием данных в хранилище
+	idSuccessful := "succesful edit data user id"
+	succesfulData := data.EncryptedData{
+		EncryptedData: []byte("some encrypted data"),
+		Name:          "succesfulData",
+	}
+	successBody, err := json.Marshal(succesfulData)
+	require.NoError(t, err)
+	m.EXPECT().ReplaceEncryptedData(gomock.Any(), idSuccessful, succesfulData).Return(true, nil)
+
+	// Тест с попыткой редактирования данных, которых нет в хранилище.
+	doesNotExistID := "does not exist user id"
+	doesNotExistData := data.EncryptedData{
+		EncryptedData: []byte("does not exist data"),
+		Name:          "succedoes not exist datafulData",
+	}
+	doesNotExistBody, err := json.Marshal(doesNotExistData)
+	require.NoError(t, err)
+	m.EXPECT().ReplaceEncryptedData(gomock.Any(), doesNotExistID, doesNotExistData).Return(false, nil)
+
+	// Тест с возвратом ошибки из хранилища.
+	errorID := "error user id"
+	errorData := data.EncryptedData{
+		EncryptedData: []byte("error data"),
+		Name:          "error data",
+	}
+	errorBody, err := json.Marshal(errorData)
+	require.NoError(t, err)
+	m.EXPECT().ReplaceEncryptedData(gomock.Any(), errorID, errorData).Return(false, fmt.Errorf("some storage error"))
+
+	type request struct {
+		body  []byte
+		stor  storage.IEncryptedServerStorage
+		setID bool
+		id    string
+	}
+	type want struct {
+		status int
+	}
+	tests := []struct {
+		name string
+		req  request
+		want want
+	}{
+		{
+			name: "succesful data addition",
+			req: request{
+				body:  successBody,
+				stor:  m,
+				setID: true,
+				id:    idSuccessful,
+			},
+			want: want{
+				status: 200,
+			},
+		},
+		{
+			name: "data does not exist",
+			req: request{
+				body:  doesNotExistBody,
+				stor:  m,
+				setID: true,
+				id:    doesNotExistID,
+			},
+			want: want{
+				status: 404,
+			},
+		},
+		{
+			name: "error from storage",
+			req: request{
+				body:  errorBody,
+				stor:  m,
+				setID: true,
+				id:    errorID,
+			},
+			want: want{
+				status: 500,
+			},
+		},
+		{
+			name: "bad data",
+			req: request{
+				body:  []byte("some bad data"),
+				stor:  m,
+				setID: true,
+				id:    idSuccessful,
+			},
+			want: want{
+				status: 500,
+			},
+		},
+		{
+			name: "id doesn't set in context",
+			req: request{
+				body:  successBody,
+				stor:  m,
+				setID: false,
+				id:    idSuccessful,
+			},
+			want: want{
+				status: 500,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// создаю тестовый http сервер
+			r := chi.NewRouter()
+			r.Post("/test", func(res http.ResponseWriter, req *http.Request) {
+				ReplaceEncryptedData(res, req, tt.req.stor)
+			})
+
+			// создаю тестовый запрос
+			request := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBuffer(tt.req.body))
+			if tt.req.setID {
+				// устанавливаю id пользователя в контекст
+				ctx := context.WithValue(request.Context(), auth.UserIDKey, tt.req.id)
+				request = request.WithContext(ctx)
+			}
+
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, request)
+
+			res := w.Result()
+			defer res.Body.Close() // закрываю тело ответа
+			assert.Equal(t, tt.want.status, res.StatusCode)
+		})
+	}
+}

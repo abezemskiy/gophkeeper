@@ -119,7 +119,7 @@ func Authorize(res http.ResponseWriter, req *http.Request, ident identity.Identi
 	if err != nil {
 		// внутренняя ошибка сервера
 		logger.ServerLog.Error("authorize user error", zap.String("address", req.URL.String()), zap.String("error", error.Error(err)))
-		http.Error(res, "authorize user error", http.StatusInternalServerError)
+		http.Error(res, fmt.Errorf("authorize user error, %w", err).Error(), http.StatusInternalServerError)
 		return
 	}
 	if !ok {
@@ -193,10 +193,18 @@ func AddEncryptedData(res http.ResponseWriter, req *http.Request, stor storage.I
 	logger.ServerLog.Debug("successful write encode data to storage")
 }
 
+// AuthorizeHandler - обертка над AddEncryptedData.
+func AddEncryptedDataHandler(stor storage.IEncryptedServerStorage) http.HandlerFunc {
+	fn := func(res http.ResponseWriter, req *http.Request) {
+		AddEncryptedData(res, req, stor)
+	}
+	return fn
+}
+
 // ReplaceEncryptedData - хэндлер для замены старых данных значениями новых.
 // В случае попытки заменить данные, когда данные с текущим id полязователя и именем ещё не загружены в хранилище
 // возвращается ошибка.
-func ReplaceEncryptedData(res http.ResponseWriter, req *http.Request, stor storage.IEncryptedServerStorage){
+func ReplaceEncryptedData(res http.ResponseWriter, req *http.Request, stor storage.IEncryptedServerStorage) {
 	// получаю id пользователя из контекста
 	id, ok := req.Context().Value(auth.UserIDKey).(string)
 	if !ok {
@@ -229,4 +237,48 @@ func ReplaceEncryptedData(res http.ResponseWriter, req *http.Request, stor stora
 
 	res.WriteHeader(http.StatusOK)
 	logger.ServerLog.Debug("successful replace encode data in storage")
+}
+
+// ReplaceEncryptedDataHandler - обертка над ReplaceEncryptedData.
+func ReplaceEncryptedDataHandler(stor storage.IEncryptedServerStorage) http.HandlerFunc {
+	fn := func(res http.ResponseWriter, req *http.Request) {
+		ReplaceEncryptedData(res, req, stor)
+	}
+	return fn
+}
+
+// GetAllEncryptedData - хэндлер для отправки пользователю всех его данных батчем.
+func GetAllEncryptedData(res http.ResponseWriter, req *http.Request, stor storage.IEncryptedServerStorage) {
+	// получаю id пользователя из контекста
+	id, ok := req.Context().Value(auth.UserIDKey).(string)
+	if !ok {
+		logger.ServerLog.Error("user ID not found in context", zap.String("address", req.URL.String()))
+		http.Error(res, "user ID not found in context", http.StatusInternalServerError)
+		return
+	}
+	defer req.Body.Close()
+
+	allData, err := stor.GetAllEncryptedData(req.Context(), id)
+	if err != nil{
+		logger.ServerLog.Error("get all data from storage error", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
+		http.Error(res, fmt.Errorf("get all data from storage error, %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+	res.WriteHeader(http.StatusOK)
+
+	enc := json.NewEncoder(res)
+	if err := enc.Encode(allData); err != nil {
+		logger.ServerLog.Error("encoding response error", zap.String("error", error.Error(err)))
+		http.Error(res, fmt.Errorf("encoding response error, %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+	logger.ServerLog.Debug("successful return all encrypted data to client")
+}
+
+// GetAllEncryptedDataHandler - обертка над GetAllEncryptedData.
+func GetAllEncryptedDataHandler(stor storage.IEncryptedServerStorage) http.HandlerFunc {
+	fn := func(res http.ResponseWriter, req *http.Request) {
+		GetAllEncryptedData(res, req, stor)
+	}
+	return fn
 }

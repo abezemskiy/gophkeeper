@@ -670,3 +670,131 @@ func TestReplaceEncryptedData(t *testing.T) {
 		})
 	}
 }
+
+func TestGetAllEncryptedData(t *testing.T) {
+	dataIsEqual := func(want, get [][]data.EncryptedData) bool {
+		if len(want) != len(get) {
+			return false
+		}
+		for i := range len(want) {
+			if len(want[i]) != len(get[i]) {
+				return false
+			}
+			for j := range want[i] {
+				if len(want[i][j].EncryptedData) != len(get[i][j].EncryptedData) {
+					return false
+				}
+				wantStr := string(want[i][j].EncryptedData)
+				getStr := string(get[i][j].EncryptedData)
+				if wantStr != getStr {
+					return false
+				}
+				if want[i][j].Name != get[i][j].Name {
+					return false
+				}
+			}
+		}
+		return true
+	}
+	// регистрирую мок хранилища данных пользователей
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	m := mocks.NewMockIEncryptedServerStorage(ctrl)
+
+	// Тест с успешным получением данных из хранилища
+	idSuccessful := "successful user id"
+	successData := [][]data.EncryptedData{
+		{{Name: "first data", EncryptedData: []byte("first payload")}, {Name: "first data", EncryptedData: []byte("second payload")}},
+		{{Name: "second data", EncryptedData: []byte("first payload")}, {Name: "second data", EncryptedData: []byte("second payload")}},
+	}
+	m.EXPECT().GetAllEncryptedData(gomock.Any(), idSuccessful).Return(successData, nil)
+
+	// Тест с возвращением ошибки из хранилища
+	errorID := "error user id"
+	m.EXPECT().GetAllEncryptedData(gomock.Any(), errorID).Return(nil, fmt.Errorf("some error"))
+
+	type request struct {
+		stor  storage.IEncryptedServerStorage
+		setID bool
+		id    string
+	}
+	type want struct {
+		status int
+		data   [][]data.EncryptedData
+	}
+	tests := []struct {
+		name string
+		req  request
+		want want
+	}{
+		{
+			name: "succesful getting data",
+			req: request{
+				stor:  m,
+				setID: true,
+				id:    idSuccessful,
+			},
+			want: want{
+				status: 200,
+				data:   successData,
+			},
+		},
+		{
+			name: "erro from storage",
+			req: request{
+				stor:  m,
+				setID: true,
+				id:    errorID,
+			},
+			want: want{
+				status: 500,
+			},
+		},
+		{
+			name: "id doesn't set in context",
+			req: request{
+				stor:  m,
+				setID: false,
+				id:    idSuccessful,
+			},
+			want: want{
+				status: 500,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// создаю тестовый http сервер
+			r := chi.NewRouter()
+			r.Get("/test", func(res http.ResponseWriter, req *http.Request) {
+				GetAllEncryptedData(res, req, tt.req.stor)
+			})
+
+			// создаю тестовый запрос
+			request := httptest.NewRequest(http.MethodGet, "/test", nil)
+			if tt.req.setID {
+				// устанавливаю id пользователя в контекст
+				ctx := context.WithValue(request.Context(), auth.UserIDKey, tt.req.id)
+				request = request.WithContext(ctx)
+			}
+
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, request)
+
+			res := w.Result()
+			defer res.Body.Close() // закрываю тело ответа
+			assert.Equal(t, tt.want.status, res.StatusCode)
+
+			// Проверяю тело запроса с ожидаемым
+			if tt.want.status == http.StatusOK {
+				var getData [][]data.EncryptedData
+				dec := json.NewDecoder(res.Body)
+				err := dec.Decode(&getData)
+				require.NoError(t, err)
+
+				// проверяю данные отправленные сервером
+				assert.Equal(t, true, dataIsEqual(tt.want.data, getData))
+			}
+		})
+	}
+}

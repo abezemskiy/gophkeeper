@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"gophkeeper/internal/repositories/connection"
 	"gophkeeper/internal/repositories/data"
 	repoStorage "gophkeeper/internal/repositories/storage"
 )
@@ -16,5 +17,6 @@ type (
 	IEncryptedServerStorage interface {
 		repoStorage.IEncryptedStorage
 		EncryptedDataAppender
+		connection.ConnectionInfoKeeper
 	}
 )

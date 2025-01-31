@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"gophkeeper/internal/repositories/data"
 	"gophkeeper/internal/repositories/identity"
+	"time"
 
 	"github.com/lib/pq"
 )
@@ -73,6 +74,22 @@ func (s Store) Bootstrap(ctx context.Context) error {
 		return fmt.Errorf("create unique index in user_data table error, %w", err)
 	}
 
+	// Создаю таблицу для хранения даты последнего визита пользователя-------------------
+	_, err = tx.ExecContext(ctx, `
+		CREATE TABLE IF NOT EXISTS user_last_seen (
+			user_id varchar(128) PRIMARY KEY,
+			last_seen TIMESTAMP WITH TIME ZONE NOT NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("create table user_last_seen error, %w", err)
+	}
+	// создаю уникальный индекс для ID пользователя
+	_, err = tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS user_id ON user_last_seen (user_id)`)
+	if err != nil {
+		return fmt.Errorf("create unique index in user_last_seen table error, %w", err)
+	}
+
 	// коммитим транзакцию
 	return tx.Commit()
 }
@@ -102,6 +119,14 @@ func (s Store) Disable(ctx context.Context) error {
 	`)
 	if err != nil {
 		return fmt.Errorf("truncate table user_data error, %w", err)
+	}
+
+	// удаляю все записи в таблице user_last_seen----------------------
+	_, err = tx.ExecContext(ctx, `
+		TRUNCATE TABLE user_last_seen
+	`)
+	if err != nil {
+		return fmt.Errorf("truncate table user_last_seen error, %w", err)
 	}
 
 	// коммитим транзакцию
@@ -354,4 +379,45 @@ func (s Store) AppendEncryptedData(ctx context.Context, idUser string, userData 
 		return false, nil
 	}
 	return true, nil
+}
+
+// AddDateOfLastVisit - метод для добавления даты последнего визита пользователя.
+func (s Store) AddDateOfLastVisit(ctx context.Context, idUser string, date time.Time) error {
+	query := `
+	INSERT INTO user_last_seen (user_id, last_seen) 
+	VALUES ($1, $2) 
+	ON CONFLICT (user_id) DO UPDATE SET last_seen = EXCLUDED.last_seen
+`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	_, err = stmt.ExecContext(ctx, idUser, date)
+	if err != nil {
+		return fmt.Errorf("query execution error, %w", err)
+	}
+	return nil
+}
+
+// GetDateOfLastVisit - метод для выгрузки даты последнего визита пользователя.
+func (s Store) GetDateOfLastVisit(ctx context.Context, idUser string) (time.Time, error) {
+	query := `
+	SELECT last_seen
+	FROM user_last_seen
+	WHERE user_id = $1
+`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	row := stmt.QueryRowContext(ctx, idUser)
+
+	var lastVisit time.Time
+	err = row.Scan(&lastVisit)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("scan row error, %w", err)
+	}
+	return lastVisit, nil
 }

@@ -328,3 +328,48 @@ func DeleteEncryptedDataHandler(stor storage.IEncryptedServerStorage) http.Handl
 	}
 	return fn
 }
+
+// HandleConflictData - хэндлер для обработки данных в случае конфликта.
+// В случае редактирования данных в офлайн режиме оригинальные данные не меняются, к ним только добавляется новая версия.
+func HandleConflictData(res http.ResponseWriter, req *http.Request, stor storage.IEncryptedServerStorage) {
+	// получаю id пользователя из контекста
+	id, ok := req.Context().Value(auth.UserIDKey).(string)
+	if !ok {
+		logger.ServerLog.Error("user ID not found in context", zap.String("address", req.URL.String()))
+		http.Error(res, "user ID not found in context", http.StatusInternalServerError)
+		return
+	}
+	defer req.Body.Close()
+
+	// Сериализую данные из запроса клиента
+	var appendData data.EncryptedData
+	if err := json.NewDecoder(req.Body).Decode(&appendData); err != nil {
+		logger.ServerLog.Error("can't parse data from request", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
+		http.Error(res, "can't parse data from request", http.StatusInternalServerError)
+		return
+	}
+
+	// добавляю новую версию данных к уже существующим
+	ok, err := stor.AppendEncryptedData(req.Context(), id, appendData)
+	if err != nil {
+		logger.ServerLog.Error("append data to storage error", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
+		http.Error(res, fmt.Errorf("append data to storage error, %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+	if !ok {
+		logger.ServerLog.Error("data does not exist", zap.String("address", req.URL.String()))
+		http.Error(res, "data does not exist", http.StatusNotFound)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
+	logger.ServerLog.Debug("successful append encode data to storage")
+}
+
+// HandleConflictDataHandler - обертка над HandleConflictData.
+func HandleConflictDataHandler(stor storage.IEncryptedServerStorage) http.HandlerFunc {
+	fn := func(res http.ResponseWriter, req *http.Request) {
+		HandleConflictData(res, req, stor)
+	}
+	return fn
+}

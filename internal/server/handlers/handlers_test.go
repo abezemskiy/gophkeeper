@@ -404,10 +404,10 @@ func TestAddEncryptedData(t *testing.T) {
 	m := mocks.NewMockIEncryptedServerStorage(ctrl)
 
 	// Тест с успешным добавлением данных в хранилище
-	idSuccessful := "succesful data user id"
+	idSuccessful := "successful data user id"
 	succesfulData := data.EncryptedData{
 		EncryptedData: []byte("some encrypted data"),
-		Name:          "succesfulData",
+		Name:          "successfulData",
 	}
 	successBody, err := json.Marshal(succesfulData)
 	require.NoError(t, err)
@@ -448,7 +448,7 @@ func TestAddEncryptedData(t *testing.T) {
 		want want
 	}{
 		{
-			name: "succesful data addition",
+			name: "successful data addition",
 			req: request{
 				body:  successBody,
 				stor:  m,
@@ -541,10 +541,10 @@ func TestReplaceEncryptedData(t *testing.T) {
 	m := mocks.NewMockIEncryptedServerStorage(ctrl)
 
 	// Тест с успешным редактированием данных в хранилище
-	idSuccessful := "succesful edit data user id"
+	idSuccessful := "successful edit data user id"
 	succesfulData := data.EncryptedData{
 		EncryptedData: []byte("some encrypted data"),
-		Name:          "succesfulData",
+		Name:          "successfulData",
 	}
 	successBody, err := json.Marshal(succesfulData)
 	require.NoError(t, err)
@@ -585,7 +585,7 @@ func TestReplaceEncryptedData(t *testing.T) {
 		want want
 	}{
 		{
-			name: "succesful data addition",
+			name: "successful data addition",
 			req: request{
 				body:  successBody,
 				stor:  m,
@@ -728,7 +728,7 @@ func TestGetAllEncryptedData(t *testing.T) {
 		want want
 	}{
 		{
-			name: "succesful getting data",
+			name: "successful getting data",
 			req: request{
 				stor:  m,
 				setID: true,
@@ -806,7 +806,7 @@ func TestDeleteEncryptedData(t *testing.T) {
 	m := mocks.NewMockIEncryptedServerStorage(ctrl)
 
 	// Тест с успешным удалением данных из хранилища
-	idSuccessful := "succesful delete data user id"
+	idSuccessful := "successful delete data user id"
 	successfulDataName := "successful delete data name"
 	successfulBody, err := json.Marshal(data.MetaInfo{
 		Name: successfulDataName,
@@ -847,7 +847,7 @@ func TestDeleteEncryptedData(t *testing.T) {
 		want want
 	}{
 		{
-			name: "succesful data deletion",
+			name: "successful data deletion",
 			req: request{
 				body:  successfulBody,
 				stor:  m,
@@ -894,6 +894,18 @@ func TestDeleteEncryptedData(t *testing.T) {
 				status: 404,
 			},
 		},
+		{
+			name: "id does not set in context",
+			req: request{
+				body:  successfulBody,
+				stor:  m,
+				setID: false,
+				id:    idSuccessful,
+			},
+			want: want{
+				status: 500,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -905,6 +917,143 @@ func TestDeleteEncryptedData(t *testing.T) {
 
 			// создаю тестовый запрос
 			request := httptest.NewRequest(http.MethodDelete, "/test", bytes.NewBuffer(tt.req.body))
+			if tt.req.setID {
+				// устанавливаю id пользователя в контекст
+				ctx := context.WithValue(request.Context(), auth.UserIDKey, tt.req.id)
+				request = request.WithContext(ctx)
+			}
+
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, request)
+
+			res := w.Result()
+			defer res.Body.Close() // закрываю тело ответа
+			assert.Equal(t, tt.want.status, res.StatusCode)
+		})
+	}
+}
+
+func TestHandleConflictData(t *testing.T) {
+	// регистрирую мок хранилища данных пользователей
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	m := mocks.NewMockIEncryptedServerStorage(ctrl)
+
+	// Тест с успешным добавление новой версии данных в хранилище
+	idSuccessful := "successful append data user id"
+	succesfulData := data.EncryptedData{
+		EncryptedData: []byte("some encrypted data"),
+		Name:          "successfulData",
+	}
+	successBody, err := json.Marshal(succesfulData)
+	require.NoError(t, err)
+	m.EXPECT().AppendEncryptedData(gomock.Any(), idSuccessful, succesfulData).Return(true, nil)
+
+	// Тест с возвращением ошибки из хранилища
+	errorID := "error from storage while append data user id"
+	errorData := data.EncryptedData{
+		EncryptedData: []byte("some error encrypted data"),
+		Name:          "error data name",
+	}
+	errorBody, err := json.Marshal(errorData)
+	require.NoError(t, err)
+	m.EXPECT().AppendEncryptedData(gomock.Any(), errorID, errorData).Return(false, errors.New("some storage error"))
+
+	// Тест с попыткой изменить данные, которых нет в хранилище
+	doesNotExistID := "does not exist data in append handler user id"
+	doesNotExistData := data.EncryptedData{
+		EncryptedData: []byte("some does not exist data"),
+		Name:          "does not exist data name",
+	}
+	doesNotExistBody, err := json.Marshal(doesNotExistData)
+	require.NoError(t, err)
+	m.EXPECT().AppendEncryptedData(gomock.Any(), doesNotExistID, doesNotExistData).Return(false, nil)
+
+	type request struct {
+		body  []byte
+		stor  storage.IEncryptedServerStorage
+		setID bool
+		id    string
+	}
+	type want struct {
+		status int
+	}
+	tests := []struct {
+		name string
+		req  request
+		want want
+	}{
+		{
+			name: "successful data appending",
+			req: request{
+				body:  successBody,
+				stor:  m,
+				setID: true,
+				id:    idSuccessful,
+			},
+			want: want{
+				status: 200,
+			},
+		},
+		{
+			name: "bad data",
+			req: request{
+				body:  []byte("some bad data"),
+				stor:  m,
+				setID: true,
+				id:    idSuccessful,
+			},
+			want: want{
+				status: 500,
+			},
+		},
+		{
+			name: "error in storage",
+			req: request{
+				body:  errorBody,
+				stor:  m,
+				setID: true,
+				id:    errorID,
+			},
+			want: want{
+				status: 500,
+			},
+		},
+		{
+			name: "does not exist data",
+			req: request{
+				body:  doesNotExistBody,
+				stor:  m,
+				setID: true,
+				id:    doesNotExistID,
+			},
+			want: want{
+				status: 404,
+			},
+		},
+		{
+			name: "id does not set in context",
+			req: request{
+				body:  successBody,
+				stor:  m,
+				setID: false,
+				id:    idSuccessful,
+			},
+			want: want{
+				status: 500,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// создаю тестовый http сервер
+			r := chi.NewRouter()
+			r.Post("/test", func(res http.ResponseWriter, req *http.Request) {
+				HandleConflictData(res, req, tt.req.stor)
+			})
+
+			// создаю тестовый запрос
+			request := httptest.NewRequest(http.MethodPost, "/test", bytes.NewBuffer(tt.req.body))
 			if tt.req.setID {
 				// устанавливаю id пользователя в контекст
 				ctx := context.WithValue(request.Context(), auth.UserIDKey, tt.req.id)

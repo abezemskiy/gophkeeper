@@ -7,8 +7,11 @@ import (
 	"gophkeeper/internal/common/identity/tools/checker"
 	"gophkeeper/internal/common/identity/tools/id"
 	"gophkeeper/internal/common/identity/tools/token"
+	"gophkeeper/internal/repositories/data"
 	"gophkeeper/internal/repositories/identity"
+	"gophkeeper/internal/server/identity/auth"
 	"gophkeeper/internal/server/logger"
+	"gophkeeper/internal/server/storage"
 	"net/http"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -152,4 +155,39 @@ func AuthorizeHandler(ident identity.Identifier) http.HandlerFunc {
 		Authorize(res, req, ident)
 	}
 	return fn
+}
+
+// AddEncryptedData - хэндлер для загрузки новых зашифрованных данных в хранилище.
+func AddEncryptedData(res http.ResponseWriter, req *http.Request, stor storage.IEncryptedServerStorage) {
+	// получаю id пользователя из контекста
+	id, ok := req.Context().Value(auth.UserIDKey).(string)
+	if !ok {
+		logger.ServerLog.Error("user ID not found in context", zap.String("address", req.URL.String()))
+		http.Error(res, "user ID not found in context", http.StatusInternalServerError)
+		return
+	}
+	defer req.Body.Close()
+
+	// Сериализую данные из запроса клиента
+	var data data.EncryptedData
+	if err := json.NewDecoder(req.Body).Decode(&data); err != nil {
+		logger.ServerLog.Error("can't parse data from request", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
+		http.Error(res, "can't parse data from request", http.StatusInternalServerError)
+		return
+	}
+
+	ok, err := stor.AddEncryptedData(req.Context(), id, data)
+	if err != nil {
+		logger.ServerLog.Error("adding data to storage error", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
+		http.Error(res, fmt.Errorf("adding data to storage error, %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+	if !ok {
+		logger.ServerLog.Error("data is already exist", zap.String("address", req.URL.String()))
+		http.Error(res, "data is already exist", http.StatusConflict)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
+	logger.ServerLog.Debug("successful write encode data to storage")
 }

@@ -798,3 +798,125 @@ func TestGetAllEncryptedData(t *testing.T) {
 		})
 	}
 }
+
+func TestDeleteEncryptedData(t *testing.T) {
+	// регистрирую мок хранилища данных пользователей
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	m := mocks.NewMockIEncryptedServerStorage(ctrl)
+
+	// Тест с успешным удалением данных из хранилища
+	idSuccessful := "succesful delete data user id"
+	successfulDataName := "successful delete data name"
+	successfulBody, err := json.Marshal(data.MetaInfo{
+		Name: successfulDataName,
+	})
+	require.NoError(t, err)
+	m.EXPECT().DeleteEncryptedData(gomock.Any(), idSuccessful, successfulDataName).Return(true, nil)
+
+	// Тест с возвращением ошибки из хранилища
+	errorID := "error delete data user id"
+	errorDataName := "error delete data name"
+	errorBody, err := json.Marshal(data.MetaInfo{
+		Name: errorDataName,
+	})
+	require.NoError(t, err)
+	m.EXPECT().DeleteEncryptedData(gomock.Any(), errorID, errorDataName).Return(false, errors.New("some storage error"))
+
+	// Тест с попыткой удалить несуществующие данные
+	doesNotID := "does not exist data user id"
+	doesNotDataName := "does not exist delete data name"
+	doesNotBody, err := json.Marshal(data.MetaInfo{
+		Name: doesNotDataName,
+	})
+	require.NoError(t, err)
+	m.EXPECT().DeleteEncryptedData(gomock.Any(), doesNotID, doesNotDataName).Return(false, nil)
+
+	type request struct {
+		body  []byte
+		stor  storage.IEncryptedServerStorage
+		setID bool
+		id    string
+	}
+	type want struct {
+		status int
+	}
+	tests := []struct {
+		name string
+		req  request
+		want want
+	}{
+		{
+			name: "succesful data deletion",
+			req: request{
+				body:  successfulBody,
+				stor:  m,
+				setID: true,
+				id:    idSuccessful,
+			},
+			want: want{
+				status: 200,
+			},
+		},
+		{
+			name: "bad meta info",
+			req: request{
+				body:  []byte("bad meta info"),
+				stor:  m,
+				setID: true,
+				id:    idSuccessful,
+			},
+			want: want{
+				status: 400,
+			},
+		},
+		{
+			name: "error from storage",
+			req: request{
+				body:  errorBody,
+				stor:  m,
+				setID: true,
+				id:    errorID,
+			},
+			want: want{
+				status: 500,
+			},
+		},
+		{
+			name: "data doesn't exist",
+			req: request{
+				body:  doesNotBody,
+				stor:  m,
+				setID: true,
+				id:    doesNotID,
+			},
+			want: want{
+				status: 404,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// создаю тестовый http сервер
+			r := chi.NewRouter()
+			r.Delete("/test", func(res http.ResponseWriter, req *http.Request) {
+				DeleteEncryptedData(res, req, tt.req.stor)
+			})
+
+			// создаю тестовый запрос
+			request := httptest.NewRequest(http.MethodDelete, "/test", bytes.NewBuffer(tt.req.body))
+			if tt.req.setID {
+				// устанавливаю id пользователя в контекст
+				ctx := context.WithValue(request.Context(), auth.UserIDKey, tt.req.id)
+				request = request.WithContext(ctx)
+			}
+
+			w := httptest.NewRecorder()
+			r.ServeHTTP(w, request)
+
+			res := w.Result()
+			defer res.Body.Close() // закрываю тело ответа
+			assert.Equal(t, tt.want.status, res.StatusCode)
+		})
+	}
+}

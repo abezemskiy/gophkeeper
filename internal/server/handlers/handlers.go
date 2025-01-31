@@ -259,7 +259,7 @@ func GetAllEncryptedData(res http.ResponseWriter, req *http.Request, stor storag
 	defer req.Body.Close()
 
 	allData, err := stor.GetAllEncryptedData(req.Context(), id)
-	if err != nil{
+	if err != nil {
 		logger.ServerLog.Error("get all data from storage error", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
 		http.Error(res, fmt.Errorf("get all data from storage error, %w", err).Error(), http.StatusInternalServerError)
 		return
@@ -279,6 +279,52 @@ func GetAllEncryptedData(res http.ResponseWriter, req *http.Request, stor storag
 func GetAllEncryptedDataHandler(stor storage.IEncryptedServerStorage) http.HandlerFunc {
 	fn := func(res http.ResponseWriter, req *http.Request) {
 		GetAllEncryptedData(res, req, stor)
+	}
+	return fn
+}
+
+// DeleteEncryptedData - хэндлер для удаления данных пользователя из хранилища по имени этих данных.
+func DeleteEncryptedData(res http.ResponseWriter, req *http.Request, stor storage.IEncryptedServerStorage) {
+	// получаю id пользователя из контекста
+	id, ok := req.Context().Value(auth.UserIDKey).(string)
+	if !ok {
+		logger.ServerLog.Error("user ID not found in context", zap.String("address", req.URL.String()))
+		http.Error(res, "user ID not found in context", http.StatusInternalServerError)
+		return
+	}
+	defer req.Body.Close()
+
+	// извлекаю информацию о данных из запроса клиента
+	var dataMetaInfo data.MetaInfo
+	dec := json.NewDecoder(req.Body)
+	err := dec.Decode(&dataMetaInfo)
+	if err != nil {
+		logger.ServerLog.Error("decoding request error", zap.String("error", error.Error(err)))
+		http.Error(res, fmt.Errorf("decoding request error, %w", err).Error(), http.StatusBadRequest)
+		return
+	}
+
+	// Удаляю данные из хранилища
+	ok, err = stor.DeleteEncryptedData(req.Context(), id, dataMetaInfo.Name)
+	if err != nil {
+		logger.ServerLog.Error("delete data from storage error", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
+		http.Error(res, fmt.Errorf("delete data from storage error, %w", err).Error(), http.StatusInternalServerError)
+		return
+	}
+	if !ok {
+		logger.ServerLog.Error("data does not exist", zap.String("address", req.URL.String()))
+		http.Error(res, "data does not exist", http.StatusNotFound)
+		return
+	}
+
+	res.WriteHeader(http.StatusOK)
+	logger.ServerLog.Debug(fmt.Sprintf("successful delete data %s from storage", dataMetaInfo.Name))
+}
+
+// DeleteEncryptedDataHandler - обертка над DeleteEncryptedData.
+func DeleteEncryptedDataHandler(stor storage.IEncryptedServerStorage) http.HandlerFunc {
+	fn := func(res http.ResponseWriter, req *http.Request) {
+		DeleteEncryptedData(res, req, stor)
 	}
 	return fn
 }

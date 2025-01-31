@@ -14,7 +14,7 @@ type (
 
 	// EncryptedDataReader - интерфейс для выгрузки зашифрованных данных у конкретного пользователя по его id.
 	EncryptedDataReader interface {
-		GetAllEncryptedData(ctx context.Context, idUser string) ([][]data.EncryptedData, error)                  // Возвращает все зашифрованные данные по id
+		GetAllEncryptedData(ctx context.Context, idUser string) ([][]data.EncryptedData, error) // Возвращает все зашифрованные данные по id
 	}
 
 	// EncryptedDataDeleter - интерфейс для удаления зашифрованных данных по id пользователя и имени данных.
@@ -32,5 +32,6 @@ type (
 		EncryptedDataWriter
 		EncryptedDataReader
 		Starter
+		EncryptedDataDeleter
 	}
 )

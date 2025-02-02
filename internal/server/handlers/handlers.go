@@ -169,15 +169,15 @@ func AddEncryptedData(res http.ResponseWriter, req *http.Request, stor storage.I
 	defer req.Body.Close()
 
 	// Сериализую данные из запроса клиента
-	var data data.EncryptedData
-	if err := json.NewDecoder(req.Body).Decode(&data); err != nil {
+	var encrData data.EncryptedData
+	if err := json.NewDecoder(req.Body).Decode(&encrData); err != nil {
 		logger.ServerLog.Error("can't parse data from request", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
 		http.Error(res, "can't parse data from request", http.StatusInternalServerError)
 		return
 	}
 
 	// Добавляю новые данные в хранилище
-	ok, err := stor.AddEncryptedData(req.Context(), id, data)
+	ok, err := stor.AddEncryptedData(req.Context(), id, encrData, data.SAVED)
 	if err != nil {
 		logger.ServerLog.Error("adding data to storage error", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
 		http.Error(res, fmt.Errorf("adding data to storage error, %w", err).Error(), http.StatusInternalServerError)
@@ -223,7 +223,7 @@ func ReplaceEncryptedData(res http.ResponseWriter, req *http.Request, stor stora
 	}
 
 	// заменяю старые данные новыми в хранилище
-	ok, err := stor.ReplaceEncryptedData(req.Context(), id, newData)
+	ok, err := stor.ReplaceEncryptedData(req.Context(), id, newData, data.SAVED)
 	if err != nil {
 		logger.ServerLog.Error("replace data in storage error", zap.String("address", req.URL.String()), zap.String("error", err.Error()))
 		http.Error(res, fmt.Errorf("replace data in storage error, %w", err).Error(), http.StatusInternalServerError)

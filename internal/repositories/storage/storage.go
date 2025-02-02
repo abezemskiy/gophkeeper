@@ -8,8 +8,8 @@ import (
 type (
 	// EncryptedDataWriter - интерфейс для добавления зашифрованных данных хранилище.
 	EncryptedDataWriter interface {
-		AddEncryptedData(ctx context.Context, idUser string, data data.EncryptedData) (bool, error)     // Для загрузки зашифрованныч данных по id
-		ReplaceEncryptedData(ctx context.Context, idUser string, data data.EncryptedData) (bool, error) // Для замены существующих в хранилищеданные
+		AddEncryptedData(ctx context.Context, idUser string, data data.EncryptedData, status int) (bool, error)     // Для загрузки зашифрованныч данных по id
+		ReplaceEncryptedData(ctx context.Context, idUser string, data data.EncryptedData, status int) (bool, error) // Для замены существующих в хранилищеданные
 	}
 
 	// EncryptedDataReader - интерфейс для выгрузки зашифрованных данных у конкретного пользователя по его id.

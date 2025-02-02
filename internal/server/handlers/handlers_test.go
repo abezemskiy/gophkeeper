@@ -411,7 +411,7 @@ func TestAddEncryptedData(t *testing.T) {
 	}
 	successBody, err := json.Marshal(succesfulData)
 	require.NoError(t, err)
-	m.EXPECT().AddEncryptedData(gomock.Any(), idSuccessful, succesfulData).Return(true, nil)
+	m.EXPECT().AddEncryptedData(gomock.Any(), idSuccessful, succesfulData, data.SAVED).Return(true, nil)
 
 	// Тест с возращением ошибки из хранилища
 	idError := "error data user id"
@@ -421,7 +421,7 @@ func TestAddEncryptedData(t *testing.T) {
 	}
 	errorBody, err := json.Marshal(errorData)
 	require.NoError(t, err)
-	m.EXPECT().AddEncryptedData(gomock.Any(), idError, errorData).Return(false, fmt.Errorf("add data error"))
+	m.EXPECT().AddEncryptedData(gomock.Any(), idError, errorData, data.SAVED).Return(false, fmt.Errorf("add data error"))
 
 	// Тест с конфликтом данные. Попытка добавить данные, которые уже есть в хранилище.
 	idConflict := "conflict data user id"
@@ -431,7 +431,7 @@ func TestAddEncryptedData(t *testing.T) {
 	}
 	conflictBody, err := json.Marshal(conflictData)
 	require.NoError(t, err)
-	m.EXPECT().AddEncryptedData(gomock.Any(), idConflict, conflictData).Return(false, nil)
+	m.EXPECT().AddEncryptedData(gomock.Any(), idConflict, conflictData, data.SAVED).Return(false, nil)
 
 	type request struct {
 		body  []byte
@@ -548,7 +548,7 @@ func TestReplaceEncryptedData(t *testing.T) {
 	}
 	successBody, err := json.Marshal(succesfulData)
 	require.NoError(t, err)
-	m.EXPECT().ReplaceEncryptedData(gomock.Any(), idSuccessful, succesfulData).Return(true, nil)
+	m.EXPECT().ReplaceEncryptedData(gomock.Any(), idSuccessful, succesfulData, data.SAVED).Return(true, nil)
 
 	// Тест с попыткой редактирования данных, которых нет в хранилище.
 	doesNotExistID := "does not exist user id"
@@ -558,7 +558,7 @@ func TestReplaceEncryptedData(t *testing.T) {
 	}
 	doesNotExistBody, err := json.Marshal(doesNotExistData)
 	require.NoError(t, err)
-	m.EXPECT().ReplaceEncryptedData(gomock.Any(), doesNotExistID, doesNotExistData).Return(false, nil)
+	m.EXPECT().ReplaceEncryptedData(gomock.Any(), doesNotExistID, doesNotExistData, data.SAVED).Return(false, nil)
 
 	// Тест с возвратом ошибки из хранилища.
 	errorID := "error user id"
@@ -568,7 +568,7 @@ func TestReplaceEncryptedData(t *testing.T) {
 	}
 	errorBody, err := json.Marshal(errorData)
 	require.NoError(t, err)
-	m.EXPECT().ReplaceEncryptedData(gomock.Any(), errorID, errorData).Return(false, fmt.Errorf("some storage error"))
+	m.EXPECT().ReplaceEncryptedData(gomock.Any(), errorID, errorData, data.SAVED).Return(false, fmt.Errorf("some storage error"))
 
 	type request struct {
 		body  []byte

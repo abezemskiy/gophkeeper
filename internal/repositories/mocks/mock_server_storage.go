@@ -51,18 +51,18 @@ func (mr *MockIEncryptedServerStorageMockRecorder) AddDateOfLastVisit(arg0, arg1
 }
 
 // AddEncryptedData mocks base method.
-func (m *MockIEncryptedServerStorage) AddEncryptedData(arg0 context.Context, arg1 string, arg2 data.EncryptedData) (bool, error) {
+func (m *MockIEncryptedServerStorage) AddEncryptedData(arg0 context.Context, arg1 string, arg2 data.EncryptedData, arg3 int) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddEncryptedData", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "AddEncryptedData", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // AddEncryptedData indicates an expected call of AddEncryptedData.
-func (mr *MockIEncryptedServerStorageMockRecorder) AddEncryptedData(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockIEncryptedServerStorageMockRecorder) AddEncryptedData(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEncryptedData", reflect.TypeOf((*MockIEncryptedServerStorage)(nil).AddEncryptedData), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEncryptedData", reflect.TypeOf((*MockIEncryptedServerStorage)(nil).AddEncryptedData), arg0, arg1, arg2, arg3)
 }
 
 // AppendEncryptedData mocks base method.
@@ -140,16 +140,16 @@ func (mr *MockIEncryptedServerStorageMockRecorder) GetDateOfLastVisit(arg0, arg1
 }
 
 // ReplaceEncryptedData mocks base method.
-func (m *MockIEncryptedServerStorage) ReplaceEncryptedData(arg0 context.Context, arg1 string, arg2 data.EncryptedData) (bool, error) {
+func (m *MockIEncryptedServerStorage) ReplaceEncryptedData(arg0 context.Context, arg1 string, arg2 data.EncryptedData, arg3 int) (bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ReplaceEncryptedData", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "ReplaceEncryptedData", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(bool)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ReplaceEncryptedData indicates an expected call of ReplaceEncryptedData.
-func (mr *MockIEncryptedServerStorageMockRecorder) ReplaceEncryptedData(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockIEncryptedServerStorageMockRecorder) ReplaceEncryptedData(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceEncryptedData", reflect.TypeOf((*MockIEncryptedServerStorage)(nil).ReplaceEncryptedData), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ReplaceEncryptedData", reflect.TypeOf((*MockIEncryptedServerStorage)(nil).ReplaceEncryptedData), arg0, arg1, arg2, arg3)
 }

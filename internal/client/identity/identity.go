@@ -22,3 +22,9 @@ func (s *PasswordStorage) Get() string {
 	defer s.mu.RUnlock()
 	return s.password
 }
+
+// IPasswordStorage - интерфейс для сохранения и получения мастер пароля из оперативной памяти.
+type IPasswordStorage interface {
+	Set(string)  // метод для установки мастер пароля.
+	Get() string // метод для получения мастер пароля.
+}

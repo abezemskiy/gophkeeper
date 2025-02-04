@@ -5,7 +5,7 @@ import "go.uber.org/zap"
 // Log будет доступен всему коду как синглтон.
 // Никакой код, кроме функции InitLogger, не должен модифицировать эту переменную.
 // По умолчанию установлен no-op-логер, который не выводит никаких сообщений.
-var AgentLog *zap.Logger = zap.NewNop()
+var ClientLog *zap.Logger = zap.NewNop()
 
 // Initialize - инициализирует синглтон логера с необходимым уровнем логирования.
 func Initialize(level string) error {
@@ -24,6 +24,6 @@ func Initialize(level string) error {
 		return err
 	}
 	// устанавливаем синглтон
-	AgentLog = zl.With(zap.String("role", "agent"))
+	ClientLog = zl.With(zap.String("role", "agent"))
 	return nil
 }

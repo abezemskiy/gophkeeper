@@ -17,12 +17,12 @@ import (
 func SaveEncryptedDataToLocalStorage(ctx context.Context, userID string, stor storage.IEncryptedClientStorage, encrData data.EncryptedData, status int) (bool, error) {
 	ok, err := stor.AddEncryptedData(ctx, userID, encrData, status)
 	if err != nil {
-		logger.AgentLog.Error("failed to save new encrypted data to storage", zap.String("error", error.Error(err)))
+		logger.ClientLog.Error("failed to save new encrypted data to storage", zap.String("error", error.Error(err)))
 		return false, fmt.Errorf("failed to save new encrypted data to storage with error, %w", err)
 	}
 	// Данные уже существуют в локальном хранилище
 	if !ok {
-		logger.AgentLog.Error("failed to save new encrypted data to storage", zap.String("reason", "data is already exist"))
+		logger.ClientLog.Error("failed to save new encrypted data to storage", zap.String("reason", "data is already exist"))
 		return false, fmt.Errorf("data is already exist")
 	}
 	return true, nil
@@ -36,7 +36,7 @@ func SaveEncryptedData(ctx context.Context, userID, url string, client *resty.Cl
 	var bufEncode bytes.Buffer
 	enc := json.NewEncoder(&bufEncode)
 	if err := enc.Encode(encrData); err != nil {
-		logger.AgentLog.Error("Encode encrypted data error", zap.String("error", error.Error(err)))
+		logger.ClientLog.Error("Encode encrypted data error", zap.String("error", error.Error(err)))
 		return false, fmt.Errorf("encode encrypted data error, %w", err)
 	}
 
@@ -50,7 +50,7 @@ func SaveEncryptedData(ctx context.Context, userID, url string, client *resty.Cl
 	// Сохраняю данные в локальном хранилище. Следующая попытка сохранения данных на сервере будет
 	// осуществлена во время синхронизации данных.
 	if err != nil {
-		logger.AgentLog.Error("push json encrypted to server error", zap.String("error", error.Error(err)))
+		logger.ClientLog.Error("push json encrypted to server error", zap.String("error", error.Error(err)))
 
 		// сохранение зашифрованных данных в локальном хранилище со статусом NEW
 		return SaveEncryptedDataToLocalStorage(ctx, userID, stor, *encrData, data.NEW)
@@ -58,7 +58,7 @@ func SaveEncryptedData(ctx context.Context, userID, url string, client *resty.Cl
 
 	// Успешная отправка данных на сервер
 	if resp.StatusCode() == http.StatusOK {
-		logger.AgentLog.Debug("successful pushing encrypted data to server", zap.String("data name", encrData.Name))
+		logger.ClientLog.Debug("successful pushing encrypted data to server", zap.String("data name", encrData.Name))
 
 		// Сохранение данных в локальном хранилище со статусом SAVED
 		return SaveEncryptedDataToLocalStorage(ctx, userID, stor, *encrData, data.SAVED)
@@ -71,6 +71,6 @@ func SaveEncryptedData(ctx context.Context, userID, url string, client *resty.Cl
 	}
 
 	// Сервер вернул иной статус
-	logger.AgentLog.Error("push json encrypted to server error", zap.String("status", fmt.Sprintf("%d", resp.StatusCode())))
+	logger.ClientLog.Error("push json encrypted to server error", zap.String("status", fmt.Sprintf("%d", resp.StatusCode())))
 	return false, fmt.Errorf("push json encrypted to server error, status %d", resp.StatusCode())
 }

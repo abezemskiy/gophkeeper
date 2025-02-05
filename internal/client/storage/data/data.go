@@ -14,6 +14,7 @@ type Text struct {
 // Binary - структура для хранения произвольных
 type Binary struct {
 	Binary []byte `json:"binary"`
+	Type   string `json:"type"` // MIME-тип (например, "image/png")
 }
 
 // Bank - структура для хранения бинарных данных.

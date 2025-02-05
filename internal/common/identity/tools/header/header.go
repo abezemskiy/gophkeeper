@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/http"
 	"strings"
+
+	"github.com/go-resty/resty/v2"
 )
 
 // GetTokenFromHeader - функция для получения токена из заголовка запроса.
@@ -27,6 +29,23 @@ func GetTokenFromHeader(req *http.Request) (string, error) {
 // необходима для тестирования хэндлеров сервера. Имитирую работу клиента и получение им токена из заголовка.
 func GetTokenFromResponseHeader(res *http.Response) (string, error) {
 	authHeader := res.Header.Get("Authorization")
+	if authHeader == "" {
+		return "", fmt.Errorf("missing authorization header")
+	}
+
+	// Проверяю, что заголовок начинается с "Bearer "
+	parts := strings.Split(authHeader, " ")
+	if len(parts) != 2 || parts[0] != "Bearer" {
+		return "", fmt.Errorf("invalid authorization header format")
+	}
+
+	jwtToken := parts[1]
+	return jwtToken, nil
+}
+
+// GetTokenFromRestyResponseHeader извлекает JWT-токен из заголовка в ответе сервера.
+func GetTokenFromRestyResponseHeader(res *resty.Response) (string, error) {
+	authHeader := res.Header().Get("Authorization")
 	if authHeader == "" {
 		return "", fmt.Errorf("missing authorization header")
 	}

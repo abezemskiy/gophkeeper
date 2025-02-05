@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/go-chi/chi"
+	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -127,6 +128,97 @@ func TestGetTokenFromResponseHeader(t *testing.T) {
 
 			// извлекаю полученный от сервера токен
 			getToken, err := GetTokenFromResponseHeader(result)
+
+			if tt.want.err {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+
+				// извлекаю id из полученного от сервера токена
+				getID, err := token.GetIDFromToken(getToken)
+				require.NoError(t, err)
+				assert.Equal(t, tt.req.id, getID)
+			}
+		})
+	}
+}
+
+func TestGetTokenFromRestyResponseHeader(t *testing.T) {
+	testHandler := func(id, key, format string) http.HandlerFunc {
+		return func(res http.ResponseWriter, req *http.Request) {
+			// генерирую токен
+			token, err := token.BuildJWT(id)
+			require.NoError(t, err)
+
+			// устанавливаю токен в заголовок
+			res.Header().Set(key, format+" "+token)
+		}
+	}
+
+	type request struct {
+		id     string
+		key    string
+		format string
+	}
+	type want struct {
+		err bool
+	}
+	tests := []struct {
+		name string
+		req  request
+		want want
+	}{
+		{
+			name: "success test",
+			req: request{
+				id:     "2125125235",
+				key:    "Authorization",
+				format: "Bearer",
+			},
+			want: want{
+				err: false,
+			},
+		},
+		{
+			name: "bad header",
+			req: request{
+				id:     "2125125235",
+				key:    "Wrong Header",
+				format: "Bearer",
+			},
+			want: want{
+				err: true,
+			},
+		},
+		{
+			name: "bad format",
+			req: request{
+				id:     "2125125235",
+				key:    "Authorization",
+				format: "Wrong format",
+			},
+			want: want{
+				err: true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := chi.NewRouter()
+			r.Post("/header", testHandler(tt.req.id, tt.req.key, tt.req.format))
+
+			// Создаю тестовый сервер
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+
+			client := resty.New()
+
+			resp, err := client.R().
+				Post(ts.URL + "/header")
+			require.NoError(t, err)
+
+			// извлекаю полученный от сервера токен
+			getToken, err := GetTokenFromRestyResponseHeader(resp)
 
 			if tt.want.err {
 				require.Error(t, err)

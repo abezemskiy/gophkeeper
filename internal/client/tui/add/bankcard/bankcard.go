@@ -1,10 +1,9 @@
-package text
+package bankcard
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"gophkeeper/internal/client/encr"
 	"gophkeeper/internal/client/handlers"
@@ -15,6 +14,7 @@ import (
 	"gophkeeper/internal/client/tui/app"
 	"gophkeeper/internal/client/tui/tools/printer"
 	repoData "gophkeeper/internal/repositories/data"
+	"strconv"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -24,15 +24,15 @@ import (
 
 // dataInfo - вспомогательная структура для передачи полученных от пользоавтеля данных в функцию сохранения данных в сервисе.
 type dataInfo struct {
-	text       data.Text
+	bank       data.Bank
 	metaInfo   string
 	name       string
 	createDate time.Time
 	editDate   time.Time
 }
 
-// AddTextPage - TUI страница добавления нового текста пользователя.
-func AddTextPage(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
+// AddPasswordPage - TUI страница добавления нового пароля пользователя.
+func AddPasswordPage(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
 	passStor identity.IPasswordStorage, app app.App) tview.Primitive {
 
 	form := tview.NewForm()
@@ -42,8 +42,54 @@ func AddTextPage(ctx context.Context, userID, url string, client *resty.Client, 
 		editDate:   time.Now(),
 	}
 
-	form.AddInputField("Имя данных", "", 20, nil, func(text string) { dataInfo.name = text })
-	form.AddInputField("Текст", "", 200, nil, func(text string) { dataInfo.text.Text = text })
+	form.AddInputField("Имя данных", "", 20, func(text string, _ rune) bool {
+		return text != "" // Разрешаю ввод, только если установлено имя данных
+	}, func(text string) {
+		if text != "" {
+			dataInfo.name = text // Разрешаю ввод, только если установлено имя данных
+		}
+	})
+
+	form.AddInputField("Номер карты", "", 16, func(text string, _ rune) bool {
+		_, err := strconv.ParseInt(text, 10, 64)
+		return err == nil // Разрешаю ввод только если это число
+	}, func(text string) {
+		num, err := strconv.ParseInt(text, 10, 64)
+		if err == nil {
+			dataInfo.bank.Number = num
+		}
+	})
+	form.AddInputField("Месяц", "", 2, func(text string, _ rune) bool {
+		_, err := strconv.ParseInt(text, 10, 64)
+		return err == nil // Разрешаю ввод только если это число
+	}, func(text string) {
+		num, err := strconv.ParseInt(text, 10, 64)
+		if err == nil {
+			dataInfo.bank.Mounth = int(num)
+		}
+	})
+	form.AddInputField("Год", "", 2, func(text string, _ rune) bool {
+		_, err := strconv.ParseInt(text, 10, 64)
+		return err == nil // Разрешаю ввод только если это число
+	}, func(text string) {
+		num, err := strconv.ParseInt(text, 10, 64)
+		if err == nil {
+			dataInfo.bank.Year = int(num)
+		}
+	})
+	form.AddInputField("CVV", "", 3, func(text string, _ rune) bool {
+		_, err := strconv.ParseInt(text, 10, 64)
+		return err == nil // Разрешаю ввод только если это число
+	}, func(text string) {
+		num, err := strconv.ParseInt(text, 10, 64)
+		if err == nil {
+			dataInfo.bank.Year = int(num)
+		}
+	})
+	form.AddInputField("Имя владельца", "", 20, func(text string, _ rune) bool {
+		return text != "" // Разрешаю ввод, только если установлено имя данных
+	}, func(text string) { dataInfo.bank.Owner = text })
+
 	form.AddInputField("Описание", "", 20, nil, func(text string) { dataInfo.metaInfo = text })
 
 	form.AddButton("Сохранить", func() {
@@ -72,27 +118,22 @@ func AddTextPage(ctx context.Context, userID, url string, client *resty.Client, 
 	})
 	form.AddButton("Отмена", func() { app.SwitchTo("add") })
 
-	form.SetBorder(true).SetTitle("Добавить текст")
+	form.SetBorder(true).SetTitle("Добавить пароль")
 	return form
 }
 
 func save(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
 	dataInfo dataInfo, masterPass string) (bool, error) {
-	// проверяю корректность сохраняемого текста
-	if dataInfo.text.Text == "" {
-		return false, errors.New("text can't be emphty")
-	}
-
-	// сериализую данные типа "TEXT"
+	// сериализую данные типа "BANKCARD"
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(dataInfo.text); err != nil {
+	if err := json.NewEncoder(&buf).Encode(dataInfo.bank); err != nil {
 		return false, fmt.Errorf("encode data error, %w", err)
 	}
 
 	// Создаю структуру типа data.Data
 	dataToEncr := &repoData.Data{
 		Data:       buf.Bytes(),
-		Type:       repoData.TEXT,
+		Type:       repoData.PASSWORD,
 		Name:       dataInfo.name,
 		Metainfo:   dataInfo.metaInfo,
 		Status:     repoData.NEW,

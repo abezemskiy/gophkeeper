@@ -14,7 +14,9 @@ import (
 	"go.uber.org/zap"
 )
 
-func SaveEncryptedDataToLocalStorage(ctx context.Context, userID string, stor storage.IEncryptedClientStorage, encrData data.EncryptedData, status int) (bool, error) {
+func SaveEncryptedDataToLocalStorage(ctx context.Context, userID string, stor storage.IEncryptedClientStorage,
+	encrData data.EncryptedData, status int) (bool, error) {
+
 	ok, err := stor.AddEncryptedData(ctx, userID, encrData, status)
 	if err != nil {
 		logger.ClientLog.Error("failed to save new encrypted data to storage", zap.String("error", error.Error(err)))
@@ -23,14 +25,15 @@ func SaveEncryptedDataToLocalStorage(ctx context.Context, userID string, stor st
 	// Данные уже существуют в локальном хранилище
 	if !ok {
 		logger.ClientLog.Error("failed to save new encrypted data to storage", zap.String("reason", "data is already exist"))
-		return false, fmt.Errorf("data is already exist")
+		return false, nil
 	}
 	return true, nil
 }
 
 // SaveEncryptedData - функция для сохранения новых зашифрованных данных. Новые зашифрованные данные сохраняются в локальном хранилище
 // и происходит попытка отправки данных на сервер.
-func SaveEncryptedData(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage, encrData *data.EncryptedData) (bool, error) {
+func SaveEncryptedData(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
+	encrData *data.EncryptedData) (bool, error) {
 
 	// сериализую зашифрованные данные в json-представление  в виде слайса байт
 	var bufEncode bytes.Buffer

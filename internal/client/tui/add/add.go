@@ -6,7 +6,7 @@ import (
 	"github.com/rivo/tview"
 )
 
-// AddPage позволяет выбрать тип данных для добавления
+// AddPage позволяет выбрать тип данных для добавления.
 func AddPage(app *app.App) tview.Primitive {
 	form := tview.NewForm()
 

@@ -57,9 +57,9 @@ func TestSaveEncryptedDataToLocalStorage(t *testing.T) {
 			Name:          "data is already exist test data name",
 		}
 		status := data.NEW
-		m.EXPECT().AddEncryptedData(gomock.Any(), userID, encrData, status).Return(false, errors.New("some error"))
+		m.EXPECT().AddEncryptedData(gomock.Any(), userID, encrData, status).Return(false, nil)
 		ok, err := SaveEncryptedDataToLocalStorage(context.Background(), userID, m, encrData, status)
-		require.Error(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, false, ok)
 	}
 }

@@ -118,7 +118,7 @@ func AddPasswordPage(ctx context.Context, userID, url string, client *resty.Clie
 	})
 	form.AddButton("Отмена", func() { app.SwitchTo("add") })
 
-	form.SetBorder(true).SetTitle("Добавить пароль")
+	form.SetBorder(true).SetTitle("Добавить данные банковской карты")
 	return form
 }
 
@@ -133,7 +133,7 @@ func save(ctx context.Context, userID, url string, client *resty.Client, stor st
 	// Создаю структуру типа data.Data
 	dataToEncr := &repoData.Data{
 		Data:       buf.Bytes(),
-		Type:       repoData.PASSWORD,
+		Type:       repoData.BANKCARD,
 		Name:       dataInfo.name,
 		Metainfo:   dataInfo.metaInfo,
 		Status:     repoData.NEW,

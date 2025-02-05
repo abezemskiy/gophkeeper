@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -22,57 +23,45 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAddPasswordPage(t *testing.T) {
+func TestAddBinaryPage(t *testing.T) {
 	// Создаем тестовое приложение
 	testApp := app.App{}
 
 	// Создаем страницу ввода пароля
-	passwordPage := AddPasswordPage(context.Background(), "some id", "some/url", nil, nil, nil, testApp)
+	passwordPage := AddBinaryPage(context.Background(), "some id", "some/url", nil, nil, nil, testApp)
 
 	// Проверяем, что это форма
 	form, ok := passwordPage.(*tview.Form)
-	assert.True(t, ok, "AddPasswordPage must return *tview.Form")
+	assert.True(t, ok, "TestAddBinaryPage must return *tview.Form")
 
-	// Проверяем количество полей в форме (4 поля)
-	assert.Equal(t, 4, form.GetFormItemCount(), "Form must containe 4 fields and 2 buttons")
+	// Проверяем количество полей в форме (3 поля)
+	assert.Equal(t, 3, form.GetFormItemCount(), "Form must containe 3 fields and 2 buttons")
 
 	// Проверяю названия элементов--------------------------------------------------------------
 	label := form.GetFormItem(0).GetLabel()
 	assert.Equal(t, "Имя данных", label, "First element of field must be named as Имя данных")
 
 	label = form.GetFormItem(1).GetLabel()
-	assert.Equal(t, "Логин", label, "First element of field must be named as Логин")
+	assert.Equal(t, "Путь к файлу", label)
 
 	label = form.GetFormItem(2).GetLabel()
-	assert.Equal(t, "Пароль", label, "First element of field must be named as Пароль")
-
-	label = form.GetFormItem(3).GetLabel()
 	assert.Equal(t, "Описание", label, "First element of field must be named as Описание")
 
 	// Симулирую ввод данных в поля---------------------------------------------------------------
 	field0 := form.GetFormItem(0).(*tview.InputField)
 	message0 := "some data name"
 	field0.SetText(message0)
-	// Проверяю, что пароль сохранился в поле
 	assert.Equal(t, message0, field0.GetText())
 
 	field1 := form.GetFormItem(1).(*tview.InputField)
-	message1 := "some login"
+	message1 := "some path"
 	field1.SetText(message1)
-	// Проверяю, что пароль сохранился в поле
 	assert.Equal(t, message1, field1.GetText())
 
 	field2 := form.GetFormItem(2).(*tview.InputField)
-	message2 := "some password"
+	message2 := "some description"
 	field2.SetText(message2)
-	// Проверяю, что пароль сохранился в поле
 	assert.Equal(t, message2, field2.GetText())
-
-	field3 := form.GetFormItem(3).(*tview.InputField)
-	message3 := "some description"
-	field3.SetText(message3)
-	// Проверяю, что пароль сохранился в поле
-	assert.Equal(t, message3, field3.GetText())
 
 	// Получаем кнопки
 	saveButton := form.GetButton(0)
@@ -99,9 +88,9 @@ func TestSave(t *testing.T) {
 	// Тест с успешным добавлением данных--------------------------------------------------------
 	userID := "success user id"
 	info := dataInfo{
-		pass: data.Password{
-			Login:    "some login",
-			Password: "some password",
+		binary: data.Binary{
+			Type:   "some type",
+			Binary: []byte("some data"),
 		},
 		metaInfo:   "some metainfo",
 		name:       "success data name",
@@ -116,9 +105,9 @@ func TestSave(t *testing.T) {
 	// Тест с возвращением ошибки из хранилища --------------------------------------------------------
 	errorID := "error from storage user id"
 	errorInfo := dataInfo{
-		pass: data.Password{
-			Login:    "error login",
-			Password: "error password",
+		binary: data.Binary{
+			Type:   "error type",
+			Binary: []byte("error data"),
 		},
 		metaInfo:   "error metainfo",
 		name:       "error data name",
@@ -132,9 +121,9 @@ func TestSave(t *testing.T) {
 	// Тест с попыткой добавить уже существующие данные --------------------------------------------------------
 	alreadyExistID := "data is already exist user id"
 	alreadyExistInfo := dataInfo{
-		pass: data.Password{
-			Login:    "data is already exist login",
-			Password: "data is already exist password",
+		binary: data.Binary{
+			Type:   "data is already exist type",
+			Binary: []byte("data is already exist data"),
 		},
 		metaInfo:   "data is already exist metainfo",
 		name:       "data is already exist data name",
@@ -211,44 +200,6 @@ func TestSave(t *testing.T) {
 				err: false,
 			},
 		},
-		{
-			name: "emphty password",
-			req: request{
-				userID:   userID,
-				encrData: encrData,
-				info: dataInfo{pass: data.Password{
-					Login:    "some login",
-					Password: "",
-				}},
-				startServer:    true,
-				stor:           m,
-				httpStatus:     200,
-				masterPassword: succesMasterPassword,
-			},
-			want: want{
-				ok:  false,
-				err: true,
-			},
-		},
-		{
-			name: "emphty login",
-			req: request{
-				userID:   userID,
-				encrData: encrData,
-				info: dataInfo{pass: data.Password{
-					Login:    "",
-					Password: "some password",
-				}},
-				startServer:    true,
-				stor:           m,
-				httpStatus:     200,
-				masterPassword: succesMasterPassword,
-			},
-			want: want{
-				ok:  false,
-				err: true,
-			},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -269,7 +220,7 @@ func TestSave(t *testing.T) {
 				url = "http://wrong.address.com" + "/test"
 			}
 
-			ok, err := save(context.Background(), tt.req.userID, url, resty.New(), tt.req.stor, tt.req.info, tt.req.masterPassword)
+			ok, err := save(context.Background(), tt.req.userID, url, resty.New(), tt.req.stor, &tt.req.info, tt.req.masterPassword)
 			if tt.want.err {
 				require.Error(t, err)
 			} else {
@@ -277,5 +228,36 @@ func TestSave(t *testing.T) {
 				assert.Equal(t, tt.want.ok, ok)
 			}
 		})
+	}
+}
+
+func TestParseFile(t *testing.T) {
+	{
+		// Тест с успешным преобразованием
+		// создаю файл
+		name := "data.bin"
+		f, err := os.Create(name)
+		require.NoError(t, err)
+		defer os.Remove(name)
+
+		// Записываю данные в файл
+		d := []byte("some data")
+		_, err = f.Write(d)
+		require.NoError(t, err)
+
+		testInfo := dataInfo{
+			path: name,
+		}
+		err = parseFile(&testInfo)
+		require.NoError(t, err)
+
+		// Проверяю содердимое структуры
+		assert.Equal(t, "application/octet-stream", testInfo.binary.Type)
+		assert.Equal(t, string(d), string(testInfo.binary.Binary))
+	}
+	{
+		// Попытка преобразования несуществующего файла
+		err := parseFile(&dataInfo{path: "not-exist-file.txt"})
+		require.Error(t, err)
 	}
 }

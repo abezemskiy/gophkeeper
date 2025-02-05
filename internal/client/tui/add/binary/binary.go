@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"gophkeeper/internal/client/encr"
 	"gophkeeper/internal/client/handlers"
@@ -12,9 +11,11 @@ import (
 	"gophkeeper/internal/client/logger"
 	"gophkeeper/internal/client/storage"
 	"gophkeeper/internal/client/storage/data"
+	"gophkeeper/internal/client/storage/data/tools/binary"
 	"gophkeeper/internal/client/tui/app"
 	"gophkeeper/internal/client/tui/tools/printer"
 	repoData "gophkeeper/internal/repositories/data"
+	"os"
 	"time"
 
 	"github.com/go-resty/resty/v2"
@@ -24,15 +25,16 @@ import (
 
 // dataInfo - вспомогательная структура для передачи полученных от пользоавтеля данных в функцию сохранения данных в сервисе.
 type dataInfo struct {
-	pass       data.Password
+	binary     data.Binary
+	path       string
 	metaInfo   string
 	name       string
 	createDate time.Time
 	editDate   time.Time
 }
 
-// AddPasswordPage - TUI страница добавления нового пароля пользователя.
-func AddPasswordPage(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
+// AddBinaryPage - TUI страница добавления нового файла.
+func AddBinaryPage(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
 	passStor identity.IPasswordStorage, app app.App) tview.Primitive {
 
 	form := tview.NewForm()
@@ -42,9 +44,16 @@ func AddPasswordPage(ctx context.Context, userID, url string, client *resty.Clie
 		editDate:   time.Now(),
 	}
 
-	form.AddInputField("Имя данных", "", 20, nil, func(text string) { dataInfo.name = text })
-	form.AddInputField("Логин", "", 20, nil, func(text string) { dataInfo.pass.Login = text })
-	form.AddPasswordField("Пароль", "", 20, '*', func(text string) { dataInfo.pass.Password = text })
+	form.AddInputField("Имя данных", "", 20, nil, func(text string) {
+		if text != "" {
+			dataInfo.name = text // Разрешаю ввод, только если установлено имя данных
+		}
+	})
+	form.AddInputField("Путь к файлу", "", 20, nil, func(text string) {
+		if text != "" {
+			dataInfo.path = text // Разрешаю ввод, только если установлен путь к файлу
+		}
+	})
 	form.AddInputField("Описание", "", 20, nil, func(text string) { dataInfo.metaInfo = text })
 
 	form.AddButton("Сохранить", func() {
@@ -55,7 +64,13 @@ func AddPasswordPage(ctx context.Context, userID, url string, client *resty.Clie
 			app.SwitchTo("login")
 		}
 
-		ok, err := save(ctx, userID, url, client, stor, dataInfo, masterPass)
+		// Преобразую файл в бинарный вид
+		err := parseFile(&dataInfo)
+		if err != nil {
+			logger.ClientLog.Error("failed to parse file to binary", zap.String("error", error.Error(err)))
+		}
+
+		ok, err := save(ctx, userID, url, client, stor, &dataInfo, masterPass)
 		if err != nil {
 			logger.ClientLog.Error("save data error", zap.String("error", error.Error(err)))
 			printer.Error(app, fmt.Sprintf("save data error, %v", err))
@@ -73,31 +88,42 @@ func AddPasswordPage(ctx context.Context, userID, url string, client *resty.Clie
 	})
 	form.AddButton("Отмена", func() { app.SwitchTo("add") })
 
-	form.SetBorder(true).SetTitle("Добавить пароль")
+	form.SetBorder(true).SetTitle("Добавить файл")
 	return form
 }
 
-func save(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
-	dataInfo dataInfo, masterPass string) (bool, error) {
-	// проверяю корректность сохраняемого пароля
-	if dataInfo.pass.Password == "" {
-		return false, errors.New("password can't be emphty")
+// parseFile - функция для преобразования содержимого файла в бинарный вид
+func parseFile(dataInfo *dataInfo) error {
+	// Определяю тип файла
+	fileType, err := binary.GetFileType(dataInfo.path)
+	if err != nil {
+		return fmt.Errorf("error getting file type, %w", err)
 	}
-	// проверяю корректность сохраняемого логина
-	if dataInfo.pass.Login == "" {
-		return false, errors.New("login can't be emphty")
+	// Преобразую указанный файл в бинарный вид
+	d, err := os.ReadFile(dataInfo.path)
+	if err != nil {
+		return fmt.Errorf("failed to read file, %w", err)
 	}
+	// Устанавливаю полученные параметры в переменную
+	dataInfo.binary.Type = fileType
+	dataInfo.binary.Binary = d
+	
+	return nil
+}
 
-	// сериализую данные типа "PASSWORD"
+func save(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
+	dataInfo *dataInfo, masterPass string) (bool, error) {
+
+	// сериализую данные типа "BINARY"
 	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(dataInfo.pass); err != nil {
+	if err := json.NewEncoder(&buf).Encode(dataInfo.binary); err != nil {
 		return false, fmt.Errorf("encode data error, %w", err)
 	}
 
 	// Создаю структуру типа data.Data
 	dataToEncr := &repoData.Data{
 		Data:       buf.Bytes(),
-		Type:       repoData.PASSWORD,
+		Type:       repoData.BINARY,
 		Name:       dataInfo.name,
 		Metainfo:   dataInfo.metaInfo,
 		Status:     repoData.NEW,

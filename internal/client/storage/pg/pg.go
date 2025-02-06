@@ -3,10 +3,12 @@ package pg
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
+	"gophkeeper/internal/client/identity"
 	"gophkeeper/internal/repositories/data"
-	"gophkeeper/internal/repositories/identity"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/lib/pq"
 )
 
@@ -39,7 +41,8 @@ func (s Store) Bootstrap(ctx context.Context) error {
 		CREATE TABLE IF NOT EXISTS auth (
 			login varchar(128) PRIMARY KEY,
 			hash varchar(128),
-			id varchar(128)
+			id varchar(128),
+			token varchar(128)
 		)
 	`)
 	if err != nil {
@@ -108,27 +111,42 @@ func (s Store) Disable(ctx context.Context) error {
 	return tx.Commit()
 }
 
-// Register - сохраняет в базу данные нового пользователя.
-func (s Store) Register(ctx context.Context, login, hash, id string) error {
+// Register - сохраняет в базу данные нового пользователя. Если такой пользователь уже зарегистрирован, вернется false.
+func (s Store) Register(ctx context.Context, login, hash, id, token string) (bool, error) {
 	query := `
-	INSERT INTO auth (login, hash, id)
-	VALUES ($1, $2, $3)
+	INSERT INTO auth (login, hash, id, token)
+	VALUES ($1, $2, $3, $4)
 `
 	stmt, err := s.conn.PrepareContext(ctx, query)
 	if err != nil {
-		return fmt.Errorf("prepare context error, %w", err)
+		return false, fmt.Errorf("prepare context error, %w", err)
 	}
 	defer stmt.Close()
-	_, err = stmt.ExecContext(ctx, login, hash, id)
-	return err
+	_, err = stmt.ExecContext(ctx, login, hash, id, token)
+
+	if err != nil {
+		// Обрабатываю полученную ошибку
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			// Ошибка соответствует ошибке при попытке установить повторяющеся поле типа "PRIMARY KEY".
+			// Пользователь уже зарегистрирован.
+			return false, nil
+		} else {
+			return false, fmt.Errorf("query execution error, %w", err)
+		}
+	}
+
+	// Пользователь успешно зарегистрирован
+	return true, nil
 }
 
 // Authorize - получаю авторизационные данные пользователя (хэш) по логину.
 // В случае, если пользователь с переданным логином не найден, возвращается ошибка.
-func (s Store) Authorize(ctx context.Context, login string) (data identity.AuthorizationData, ok bool, err error) {
+func (s Store) Authorize(ctx context.Context, login string) (data identity.UserInfo, ok bool, err error) {
 	query := `
 		SELECT  hash,
-				id
+				id,
+				token
 		FROM auth
 		WHERE login = $1
 	`
@@ -140,7 +158,7 @@ func (s Store) Authorize(ctx context.Context, login string) (data identity.Autho
 	defer stmt.Close()
 	row := stmt.QueryRowContext(ctx, login)
 
-	err = row.Scan(&data.Hash, &data.ID)
+	err = row.Scan(&data.Hash, &data.ID, &data.Token)
 	if err != nil {
 		// пользователь не найден
 		err = nil
@@ -324,6 +342,34 @@ func (s Store) DeleteEncryptedData(ctx context.Context, idUser, dataName string)
 	rowsAffected, _ := result.RowsAffected()
 	if rowsAffected == 0 {
 		// Запись не найдена, попытка дополнить данные, которых не существует.
+		return false, nil
+	}
+	return true, nil
+}
+
+// SetToken - метод для установки нового токена для конкретного пользователя.
+// В случае, если не найден пользователь по данному логину, то возвращается false.
+func (s Store) SetToken(ctx context.Context, login, token string) (bool, error) {
+	query := `
+	UPDATE auth
+	SET token = $2
+	WHERE login = $1
+`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return false, fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	result, err := stmt.ExecContext(ctx, login, token)
+
+	if err != nil {
+		return false, fmt.Errorf("query execution error, %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		// попытка обновить данные, которых не существует
+		// пользователь с данным логином не зарегистрирован.
 		return false, nil
 	}
 	return true, nil

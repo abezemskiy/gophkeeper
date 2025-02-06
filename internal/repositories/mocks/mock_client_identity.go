@@ -67,11 +67,12 @@ func (mr *MockClientIdentifierMockRecorder) Register(arg0, arg1, arg2, arg3, arg
 }
 
 // SetToken mocks base method.
-func (m *MockClientIdentifier) SetToken(arg0 context.Context, arg1, arg2 string) error {
+func (m *MockClientIdentifier) SetToken(arg0 context.Context, arg1, arg2 string) (bool, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SetToken", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
 // SetToken indicates an expected call of SetToken.

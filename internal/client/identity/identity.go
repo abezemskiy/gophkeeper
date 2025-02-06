@@ -8,7 +8,7 @@ import (
 type ClientIdentifier interface {
 	Register(ctx context.Context, login, hash, id, token string) (bool, error)       // Метод для регистрации пользователя.
 	Authorize(ctx context.Context, login string) (data UserInfo, ok bool, err error) // Метод для авторизации пользователя.
-	SetToken(ctx context.Context, login, token string) error                         // Метод для установки токена для определенного пользователя.
+	SetToken(ctx context.Context, login, token string) (bool, error)                 // Метод для установки токена для определенного пользователя.
 }
 
 // UserInfo - структура для авторизационных данных пользователя.
@@ -23,7 +23,7 @@ type UserInfo struct {
 // IUserInfoStorage - потокобезопасный интерфейс для сохранения и получения информации о пользователе.
 type IUserInfoStorage interface {
 	Set(authData AuthData, id string) // метод для установки данных пользователя.
-	Get() (AuthData, string)           // метод для получения данных пользователя.
+	Get() (AuthData, string)          // метод для получения данных пользователя.
 }
 
 // AuthData - структура для получения и передачи идентификационных данных пользователя.

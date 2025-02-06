@@ -3,20 +3,18 @@ package pg
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"gophkeeper/internal/repositories/data"
 	"os"
 	"testing"
 
 	"math/rand"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-const envDatabaseName = "TEST_GOPHKEEPER_DATABASE_URL"
+const envDatabaseName = "TEST_GOPHKEEPER_CLIENT_DATABASE_URL"
 
 // Вспомогательная функция для очистки данных в базе
 func cleanBD(t *testing.T, dsn string, stor *Store) {
@@ -62,25 +60,19 @@ func TestRegister(t *testing.T) {
 	{
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel()
-		err := stor.Register(ctx, "login", "hash", "id")
+		_, err := stor.Register(ctx, "login", "hash", "id", "token")
 		require.Error(t, err)
 	}
 	// Попытка повторно зарегистрировать пользователя
 	{
 		ctx := context.Background()
-		err := stor.Register(ctx, "login", "hash", "id")
+		ok, err := stor.Register(ctx, "login", "hash", "id", "token")
 		require.NoError(t, err)
+		assert.Equal(t, true, ok)
 
-		err = stor.Register(ctx, "login", "new hash", "new id")
-		require.Error(t, err)
-
-		// проверяю, что полученная ошибка соответствует ошибке при попытке установить повторяющеся поле типа "PRIMARY KEY"
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
-			require.NoError(t, nil)
-		} else {
-			require.Error(t, nil)
-		}
+		ok, err = stor.Register(ctx, "login", "new hash", "new id", "token")
+		require.NoError(t, err)
+		assert.Equal(t, false, ok)
 	}
 
 }
@@ -115,16 +107,18 @@ func TestAuthorize(t *testing.T) {
 		sLogin := "login"
 		sHash := "hash"
 		sId := "id"
-		err = stor.Register(ctx, sLogin, sHash, sId)
+		token := "token"
+		ok, err := stor.Register(ctx, sLogin, sHash, sId, token)
 		require.NoError(t, err)
+		assert.Equal(t, true, ok)
 
 		// получаю данные пользователя для авторизации по его логину
-		//var data identity.AuthorizationData
 		data, ok, err := stor.Authorize(ctx, sLogin)
 		require.NoError(t, err)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, sHash, data.Hash)
 		assert.Equal(t, sId, data.ID)
+		assert.Equal(t, token, data.Token)
 	}
 	{
 		// Test. context is exceeded--------------------------------
@@ -132,14 +126,16 @@ func TestAuthorize(t *testing.T) {
 		sLogin := "exceeded login"
 		sHash := "hash"
 		sId := "id"
-		err = stor.Register(ctx, sLogin, sHash, sId)
+		token := "token"
+		ok, err := stor.Register(ctx, sLogin, sHash, sId, token)
 		require.NoError(t, err)
+		assert.Equal(t, true, ok)
 
 		ctxExc, cancel := context.WithCancel(context.Background())
 		cancel()
 
 		// попытка получить данные пользователя для авторизации по его логину, хотя контекст уже отменен.
-		_, _, err := stor.Authorize(ctxExc, sLogin)
+		_, _, err = stor.Authorize(ctxExc, sLogin)
 		require.Error(t, err)
 	}
 	{
@@ -631,6 +627,76 @@ func TestDeleteEncryptedData(t *testing.T) {
 		cancel()
 		// добавляю новые данные в хранилище
 		_, err := stor.DeleteEncryptedData(ctx, "context exceeded id", "user data name")
+		require.Error(t, err)
+	}
+}
+
+func TestSetToken(t *testing.T) {
+	// беру адрес тестовой БД из переменной окружения
+	databaseDsn := os.Getenv(envDatabaseName)
+	assert.NotEqual(t, "", databaseDsn)
+
+	// создаю соединение с базой данных
+	conn, err := sql.Open("pgx", databaseDsn)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	// Проверка соединения с БД
+	ctx := context.Background()
+	err = conn.PingContext(ctx)
+	require.NoError(t, err)
+
+	// создаю экземпляр хранилища
+	stor := NewStore(conn)
+	err = stor.Bootstrap(ctx)
+	require.NoError(t, err)
+
+	// очищаю данные в БД от предыдущих запусков
+	cleanBD(t, databaseDsn, stor)
+	defer cleanBD(t, databaseDsn, stor)
+
+	{
+		// Тест с успешной установкой нового токена для пользователя
+		// регистрирую пользователя
+		sLogin := "login"
+		sHash := "hash"
+		sId := "id"
+		token := "token"
+		ok, err := stor.Register(ctx, sLogin, sHash, sId, token)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		// получаю данные пользователя для авторизации по его логину
+		data, ok, err := stor.Authorize(ctx, sLogin)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+		assert.Equal(t, sHash, data.Hash)
+		assert.Equal(t, sId, data.ID)
+		assert.Equal(t, token, data.Token)
+
+		// меняю токен пользователя
+		newToken := "new token"
+		ok, err = stor.SetToken(ctx, sLogin, newToken)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		// получаю данные пользователя и убеждаюсь, что токен изменился
+		data, ok, err = stor.Authorize(ctx, sLogin)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+		assert.Equal(t, newToken, data.Token)
+	}
+	{
+		// Попытка изменить токен у незарегистрированного пользователя
+		ok, err := stor.SetToken(ctx, "not register login", "some token")
+		require.NoError(t, err)
+		assert.Equal(t, false, ok)
+	}
+	{
+		// Тест с попыткой изменить токен когда контекст уже завершен
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, err := stor.SetToken(ctx, "login", "new token")
 		require.Error(t, err)
 	}
 }

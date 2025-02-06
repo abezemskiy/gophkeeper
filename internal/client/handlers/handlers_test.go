@@ -440,3 +440,171 @@ func TestRegister(t *testing.T) {
 		})
 	}
 }
+
+func TestAuthorize(t *testing.T) {
+	// регистрирую мок хранилища идентификационных данных пользователей
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	ident := mocks.NewMockClientIdentifier(ctrl)
+
+	// регистрирую мок хранилища информации о пользователе
+	info := mocks.NewMockIUserInfoStorage(ctrl)
+
+	// Успешная авторизация --------------------------------------------------------------------
+	successAuthData := identity.AuthData{
+		Login:    "success login",
+		Password: "success password",
+	}
+	successHash, err := hasher.CalkHash(successAuthData.Login + successAuthData.Password)
+	require.NoError(t, err)
+	successID := "success id"
+	ident.EXPECT().Authorize(gomock.Any(), successAuthData.Login).Return(identity.UserInfo{
+		ID:    successID,
+		Token: "success token",
+		Hash:  successHash,
+	}, true, nil)
+	info.EXPECT().Set(successAuthData, successID)
+
+	// Возвращение ошибки из хранилища аутентификационных данных --------------------------------------------------------------------
+	errorAuthData := identity.AuthData{
+		Login:    "error login",
+		Password: "error password",
+	}
+	require.NoError(t, err)
+	ident.EXPECT().Authorize(gomock.Any(), errorAuthData.Login).Return(identity.UserInfo{}, true, errors.New("some error"))
+
+	// Пользователь не зарегистрирован --------------------------------------------------------------------
+	notRegisterAuthData := identity.AuthData{
+		Login:    "not register login",
+		Password: "not register password",
+	}
+	require.NoError(t, err)
+	ident.EXPECT().Authorize(gomock.Any(), notRegisterAuthData.Login).Return(identity.UserInfo{}, false, nil)
+
+	// Неверный пароль --------------------------------------------------------------------
+	wrongPassAuthData := identity.AuthData{
+		Login:    "wrong password login",
+		Password: "wrong password password",
+	}
+	ident.EXPECT().Authorize(gomock.Any(), wrongPassAuthData.Login).Return(identity.UserInfo{
+		ID:    "wrong pass id",
+		Token: "success token",
+		Hash:  "wrong hash",
+	}, true, nil)
+
+	type request struct {
+		authData *identity.AuthData
+		ident    identity.ClientIdentifier
+		info     identity.IUserInfoStorage
+	}
+	type want struct {
+		err           bool
+		registered    bool
+		passIsCorrect bool
+	}
+	tests := []struct {
+		name string
+		req  request
+		want want
+	}{
+		{
+			name: "success authorize",
+			req: request{
+				authData: &successAuthData,
+				ident:    ident,
+				info:     info,
+			},
+			want: want{
+				err:           false,
+				registered:    true,
+				passIsCorrect: true,
+			},
+		},
+		{
+			name: "bad login",
+			req: request{
+				authData: &identity.AuthData{
+					Login:    "",
+					Password: "some password",
+				},
+				ident: ident,
+				info:  info,
+			},
+			want: want{
+				err:           true,
+				registered:    false,
+				passIsCorrect: false,
+			},
+		},
+		{
+			name: "bad password",
+			req: request{
+				authData: &identity.AuthData{
+					Login:    "some login",
+					Password: "",
+				},
+				ident: ident,
+				info:  info,
+			},
+			want: want{
+				err:           true,
+				registered:    false,
+				passIsCorrect: false,
+			},
+		},
+		{
+			name: "error from auth data storage",
+			req: request{
+				authData: &notRegisterAuthData,
+				ident:    ident,
+				info:     nil,
+			},
+			want: want{
+				err:           false,
+				registered:    false,
+				passIsCorrect: false,
+			},
+		},
+		{
+			name: "user not register",
+			req: request{
+				authData: &errorAuthData,
+				ident:    ident,
+				info:     nil,
+			},
+			want: want{
+				err:           true,
+				registered:    false,
+				passIsCorrect: false,
+			},
+		},
+		{
+			name: "wrong password",
+			req: request{
+				authData: &wrongPassAuthData,
+				ident:    ident,
+				info:     nil,
+			},
+			want: want{
+				err:           false,
+				registered:    true,
+				passIsCorrect: false,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			passIsCorrect, registered, err := Authorize(context.Background(), tt.req.authData, tt.req.ident, tt.req.info)
+
+			if tt.want.err {
+				require.Error(t, err)
+				return
+			}
+			if !tt.want.registered {
+				assert.Equal(t, false, registered)
+				return
+			}
+			assert.Equal(t, tt.want.passIsCorrect, passIsCorrect)
+		})
+	}
+}

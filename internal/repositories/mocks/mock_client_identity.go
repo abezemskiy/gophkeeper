@@ -36,9 +36,9 @@ func (m *MockClientIdentifier) EXPECT() *MockClientIdentifierMockRecorder {
 }
 
 // Authorize mocks base method.
-func (m *MockClientIdentifier) Authorize(arg0 context.Context, arg1, arg2 string) (identity.UserInfo, bool, error) {
+func (m *MockClientIdentifier) Authorize(arg0 context.Context, arg1 string) (identity.UserInfo, bool, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Authorize", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Authorize", arg0, arg1)
 	ret0, _ := ret[0].(identity.UserInfo)
 	ret1, _ := ret[1].(bool)
 	ret2, _ := ret[2].(error)
@@ -46,9 +46,9 @@ func (m *MockClientIdentifier) Authorize(arg0 context.Context, arg1, arg2 string
 }
 
 // Authorize indicates an expected call of Authorize.
-func (mr *MockClientIdentifierMockRecorder) Authorize(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockClientIdentifierMockRecorder) Authorize(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authorize", reflect.TypeOf((*MockClientIdentifier)(nil).Authorize), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Authorize", reflect.TypeOf((*MockClientIdentifier)(nil).Authorize), arg0, arg1)
 }
 
 // Register mocks base method.

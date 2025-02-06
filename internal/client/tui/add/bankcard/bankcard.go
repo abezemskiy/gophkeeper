@@ -31,9 +31,9 @@ type dataInfo struct {
 	editDate   time.Time
 }
 
-// AddPasswordPage - TUI страница добавления нового пароля пользователя.
-func AddPasswordPage(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
-	passStor identity.IPasswordStorage, app app.App) tview.Primitive {
+// AddBankcardPage - TUI страница добавления нового пароля пользователя.
+func AddBankcardPage(ctx context.Context, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
+	info identity.IUserInfoStorage, app app.App) tview.Primitive {
 
 	form := tview.NewForm()
 	// структура для введенной пары логин пароль
@@ -94,13 +94,13 @@ func AddPasswordPage(ctx context.Context, userID, url string, client *resty.Clie
 
 	form.AddButton("Сохранить", func() {
 		// проверяю наличие в приложении мастер пароля
-		masterPass := passStor.Get()
-		if masterPass == "" {
+		authData, id := info.Get()
+		if authData.Password == "" {
 			// мастер пароль не установлен, возвращаю пользователя на страницу аутентификации.
 			app.SwitchTo("login")
 		}
 
-		ok, err := save(ctx, userID, url, client, stor, dataInfo, masterPass)
+		ok, err := save(ctx, id, url, client, stor, dataInfo, authData.Password)
 		if err != nil {
 			logger.ClientLog.Error("save data error", zap.String("error", error.Error(err)))
 			printer.Error(app, fmt.Sprintf("save data error, %v", err))

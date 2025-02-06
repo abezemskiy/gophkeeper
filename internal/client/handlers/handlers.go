@@ -168,3 +168,55 @@ func Register(ctx context.Context, url string, authData *identity.AuthData, clie
 	logger.ClientLog.Error("bad server status", zap.String("status", fmt.Sprint(resp.StatusCode())))
 	return false, fmt.Errorf("bad server status %d", resp.StatusCode())
 }
+
+// Authorize - хэндлер для авторизации пользователя в системе.
+// passIsCorrect - обозначает введен ли верный пароль,
+// registered - зарегистрирован ли пользователь в системе.
+// После успешной авторизации данные пользователя устанавливаются в хранилище на время сесси для использования в других методах.
+func Authorize(ctx context.Context, authData *identity.AuthData, ident identity.ClientIdentifier,
+	info identity.IUserInfoStorage) (passIsCorrect bool, registered bool, err error) {
+	// проверяю корректность логина
+	ok := checker.CheckLogin(authData.Login)
+	if !ok {
+		return false, false, fmt.Errorf("login is not valid")
+	}
+
+	// проверяю корректность пароля
+	ok = checker.CheckPassword(authData.Password)
+	if !ok {
+		return false, false, fmt.Errorf("password is not valid")
+	}
+
+	// Извлекаю данные пользователя из хранилища
+	userInfo, ok, err := ident.Authorize(ctx, authData.Login)
+	if err != nil {
+		logger.ClientLog.Error("failed to getting user info from storage", zap.String("error", error.Error(err)))
+		return false, false, fmt.Errorf("failed to getting user info from storage, %w", err)
+	}
+	// Пользователь не зарегистрирован
+	if !ok {
+		logger.ClientLog.Error("user not register", zap.String("login", authData.Login))
+		return false, false, nil
+	}
+
+	// Вычисляю хэш от пары логин пароль для сверки с тем, что содержится в хранилище
+	hash, err := hasher.CalkHash(authData.Login + authData.Password)
+	if err != nil {
+		logger.ClientLog.Error("failed to calculate hash", zap.String("error", error.Error(err)))
+		return false, false, fmt.Errorf("failed to calculate hash, %w", err)
+	}
+
+	// Если хэш полученный из хранилища не совпадает с тем, что был расчитан из полученной пары логи-пароль,
+	// то пароль неверный.
+	if hash != userInfo.Hash {
+		logger.ClientLog.Error("wrong password", zap.String("login", authData.Login))
+		return false, true, nil
+	}
+
+	// Устанавливаю данные пользователя в хранилище
+	info.Set(*authData, userInfo.ID)
+
+	// Пользователь успешно авторизирован
+	logger.ClientLog.Info("user successfully authorize", zap.String("login", authData.Login))
+	return true, true, nil
+}

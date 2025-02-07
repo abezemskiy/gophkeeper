@@ -348,7 +348,7 @@ func (s Store) DeleteEncryptedData(ctx context.Context, idUser, dataName string)
 }
 
 // SetToken - метод для установки нового токена для конкретного пользователя.
-// В случае, если не найден пользователь по данному логину, то возвращается false.
+// В случае, если не найден пользователь по данному логину возвращается false.
 func (s Store) SetToken(ctx context.Context, login, token string) (bool, error) {
 	query := `
 	UPDATE auth

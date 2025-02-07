@@ -700,3 +700,91 @@ func TestSetToken(t *testing.T) {
 		require.Error(t, err)
 	}
 }
+
+func TestChangeStatusOfEncryptedData(t *testing.T) {
+	// беру адрес тестовой БД из переменной окружения
+	databaseDsn := os.Getenv(envDatabaseName)
+	assert.NotEqual(t, "", databaseDsn)
+
+	// создаю соединение с базой данных
+	conn, err := sql.Open("pgx", databaseDsn)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	// Проверка соединения с БД
+	ctx := context.Background()
+	err = conn.PingContext(ctx)
+	require.NoError(t, err)
+
+	// создаю экземпляр хранилища
+	stor := NewStore(conn)
+	err = stor.Bootstrap(ctx)
+	require.NoError(t, err)
+
+	// очищаю данные в БД от предыдущих запусков
+	cleanBD(t, databaseDsn, stor)
+	defer cleanBD(t, databaseDsn, stor)
+
+	{
+		// Тест с успешным изменением статуса данных --------------------------------
+		encryptedData := []byte("some encrypted data")
+		userID := "test user id"
+		dataName := "first data"
+		userData := data.EncryptedData{
+			EncryptedData: encryptedData,
+			Name:          dataName,
+		}
+
+		// добавляю новые данные в хранилище
+		ok, err := stor.AddEncryptedData(ctx, userID, userData, data.SAVED)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		// Меняю статус данных
+		ok, err = stor.ChangeStatusOfEncryptedData(ctx, userID, dataName, data.CONFLICT)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		// Извлекаю из хранилища все данные со статусом CONFLICT
+		conflictData, err := stor.GetEncryptedDataByStatus(ctx, userID, data.CONFLICT)
+		require.NoError(t, err)
+		assert.Equal(t, 1, len(conflictData))
+		assert.Equal(t, 1, len(conflictData[0]))
+		assert.Equal(t, string(userData.EncryptedData), string(conflictData[0][0].EncryptedData))
+		assert.Equal(t, string(userData.Name), string(conflictData[0][0].Name))
+	}
+	{
+		// Попытка обновить статус данных, которых не существует
+		ok, err := stor.ChangeStatusOfEncryptedData(ctx, "does not existing user id", "does not existing data name", data.SAVED)
+		require.NoError(t, err)
+		assert.Equal(t, false, ok)
+
+		// Добавляю данные пользователя, чтобы попытаться изменить статус данных у существующего полязователя
+		// но с несуществующим имененм данных.
+		encryptedData := []byte("some encrypted data")
+		userID := "some existing user id"
+		nameData := "existing data"
+		userData := data.EncryptedData{
+			EncryptedData: encryptedData,
+			Name:          nameData,
+		}
+
+		// добавляю новые данные в хранилище
+		ok, err = stor.AddEncryptedData(ctx, userID, userData, data.SAVED)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		ok, err = stor.ChangeStatusOfEncryptedData(ctx, userID, "different name data", data.NEW)
+		require.NoError(t, err)
+		assert.Equal(t, false, ok)
+	}
+	{
+		// Test. Context exceeded
+		ctx, cancel := context.WithCancel(context.Background())
+		// отменяю контекст
+		cancel()
+		// добавляю новые данные в хранилище
+		_, err := stor.ChangeStatusOfEncryptedData(ctx, "context exceeded id", "user data name", data.NEW)
+		require.Error(t, err)
+	}
+}

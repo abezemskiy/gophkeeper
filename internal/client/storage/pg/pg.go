@@ -374,3 +374,31 @@ func (s Store) SetToken(ctx context.Context, login, token string) (bool, error) 
 	}
 	return true, nil
 }
+
+// ChangeStatusOfEncryptedData - метод для изменения статуса существующих данных у пользователя по его ID.
+// В случае, если пользователь или данные не найдены, возвращается false.
+func (s Store) ChangeStatusOfEncryptedData(ctx context.Context, userID, dataName string, newStatus int) (ok bool, err error){
+	query := `
+	UPDATE user_data
+	SET status = $3
+	WHERE user_id = $1 AND data_name = $2
+`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return false, fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	result, err := stmt.ExecContext(ctx, userID, dataName, newStatus)
+
+	if err != nil {
+		return false, fmt.Errorf("query execution error, %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		// попытка обновить данные, которых не существует
+		// пользователь с данным логином не зарегистрирован или данные не найдены.
+		return false, nil
+	}
+	return true, nil
+}

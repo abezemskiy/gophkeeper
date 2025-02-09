@@ -125,7 +125,7 @@ func SynchronizeChangedLocalData(ctx context.Context, stor storage.IEncryptedCli
 }
 
 // SynchronizeDataFromServer - функция для сохранения локальных данных со статусом CHANGED на сервере.
-// URL представляет собой адрес до хэндлера сервера для созранения дополнительной версии уже существующих данных.
+// URL представляет собой адрес до хэндлера сервера для сохранения дополнительной версии уже существующих данных.
 func SynchronizeDataFromServer(ctx context.Context, stor storage.IEncryptedClientStorage, info identity.IUserInfoStorage,
 	client *resty.Client, url string) error {
 	// Извлекаю данные текущего пользователя
@@ -184,5 +184,26 @@ func SynchronizeDataFromServer(ctx context.Context, stor storage.IEncryptedClien
 			}
 		}
 	}
+	return nil
+}
+
+// SynchronizeData - функция для синхронизации данных между сервером и клиентом.
+// addNewDataURL - представляет собой адрес до хэндлера сервера для добавления новых данных.
+// addAdditionVersionDataURL представляет собой адрес до хэндлера сервера для сохранения дополнительной версии уже существующих данных.
+func SynchronizeData(ctx context.Context, stor storage.IEncryptedClientStorage, info identity.IUserInfoStorage,
+	client *resty.Client, addNewDataURL, addAdditionVersionDataURL string) error {
+
+	// Отправляю на сервер локальные изменения пользователя
+	err := SynchronizeNewLocalData(ctx, stor, info, client, addNewDataURL)
+	if err != nil {
+		return fmt.Errorf("failed to post local data to server, %w", err)
+	}
+
+	// Получаю от сервера актуальные версии данных и устанавливаю их в локальном хранилище
+	err = SynchronizeDataFromServer(ctx, stor, info, client, addAdditionVersionDataURL)
+	if err != nil {
+		return fmt.Errorf("failed to update actual data from server in local storage, %w", err)
+	}
+
 	return nil
 }

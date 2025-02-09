@@ -27,7 +27,7 @@ func SynchronizeNewLocalData(ctx context.Context, stor storage.IEncryptedClientS
 	// Итерируюсь по слайсу зашифрованных данных
 	for _, d := range encrData {
 		if len(d) == 0 {
-			return fmt.Errorf("no version of data with status NEW exist")
+			return fmt.Errorf("no version of data with status NEW exists")
 		}
 		// Убеждаюсь, что существует лишь единственная версия данных со статусом NEW
 		if len(d) > 1 {
@@ -47,13 +47,64 @@ func SynchronizeNewLocalData(ctx context.Context, stor storage.IEncryptedClientS
 		// Обновляю статус данных в хранилище --------------------
 		var newStatus int
 		if resp.StatusCode() == http.StatusConflict {
-			newStatus = data.CHANGE
+			newStatus = data.CHANGED
 		} else if resp.StatusCode() == http.StatusOK {
 			newStatus = data.SAVED
 		}
 
 		if resp.StatusCode() == http.StatusConflict || resp.StatusCode() == http.StatusOK {
 			ok, err := stor.ChangeStatusOfEncryptedData(ctx, id, d[0].Name, newStatus)
+			if err != nil {
+				return fmt.Errorf("failed to change status from data %s of user %s, %w", authData.Login, d[0].Name, err)
+			}
+			if !ok {
+				return fmt.Errorf("user %s or data %s not exist", authData.Login, d[0].Name)
+			}
+			// В случае корректной обработки запроса продолжанию отправку данных на сервер
+			continue
+		}
+
+		return fmt.Errorf("failed to save data in server with status %d", resp.StatusCode())
+	}
+	return nil
+}
+
+// SynchronizeChangedLocalData - функция для сохранения локальных данных со статусом CHANGED на сервере.
+// URL представляет собой адрес до хэндлера сервера для созранения дополнительной версии уже существующих данных.
+func SynchronizeChangedLocalData(ctx context.Context, stor storage.IEncryptedClientStorage, info identity.IUserInfoStorage,
+	client *resty.Client, url string) error {
+	// Извлекаю данные пользователя
+	authData, id := info.Get()
+
+	// Извлекаю локальные изменения пользователя, которые не были сохранены на сервере и произвожу повторную попытку их сохранения.
+	encrData, err := stor.GetEncryptedDataByStatus(ctx, id, data.CHANGED)
+	if err != nil {
+		return fmt.Errorf("failed to get encrypted data from storage with status CHANGED of user %s, %w", authData.Login, err)
+	}
+
+	// Итерируюсь по слайсу зашифрованных данных
+	for _, d := range encrData {
+		if len(d) == 0 {
+			return fmt.Errorf("no version of data with status CHANGED exists")
+		}
+		// Убеждаюсь, что существует лишь единственная версия данных со статусом CHANGED
+		if len(d) > 1 {
+			return fmt.Errorf("only one version of data with status CHANGED can be exists")
+		}
+
+		// Отправляю данные на сервер
+		resp, err := client.R().
+			SetHeader("Content-Type", "application/json").
+			SetBody(d[0]).
+			Post(url)
+
+		if err != nil {
+			return fmt.Errorf("failed to post request to server for adding changed client data, %w", err)
+		}
+
+		// Обновляю статус данных в хранилище --------------------
+		if resp.StatusCode() == http.StatusOK {
+			ok, err := stor.ChangeStatusOfEncryptedData(ctx, id, d[0].Name, data.SAVED)
 			if err != nil {
 				return fmt.Errorf("failed to change status from data %s of user %s, %w", authData.Login, d[0].Name, err)
 			}

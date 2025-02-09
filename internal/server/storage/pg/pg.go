@@ -215,7 +215,7 @@ func (s Store) ReplaceEncryptedData(ctx context.Context, idUser string, userData
 		return false, fmt.Errorf("prepare context error, %w", err)
 	}
 	defer stmt.Close()
-	result, err := stmt.ExecContext(ctx, idUser, userData.Name, pq.Array([][]byte{userData.EncryptedData}), status)
+	result, err := stmt.ExecContext(ctx, idUser, userData.Name, [][]byte{userData.EncryptedData}, status)
 
 	if err != nil {
 		return false, fmt.Errorf("query execution error, %w", err)

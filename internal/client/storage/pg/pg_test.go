@@ -788,3 +788,101 @@ func TestChangeStatusOfEncryptedData(t *testing.T) {
 		require.Error(t, err)
 	}
 }
+
+func TestReplaceDataWithMultiVersionData(t *testing.T) {
+	// беру адрес тестовой БД из переменной окружения
+	databaseDsn := os.Getenv(envDatabaseName)
+	assert.NotEqual(t, "", databaseDsn)
+
+	// создаю соединение с базой данных
+	conn, err := sql.Open("pgx", databaseDsn)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	// Проверка соединения с БД
+	ctx := context.Background()
+	err = conn.PingContext(ctx)
+	require.NoError(t, err)
+
+	// создаю экземпляр хранилища
+	stor := NewStore(conn)
+	err = stor.Bootstrap(ctx)
+	require.NoError(t, err)
+
+	// очищаю данные в БД от предыдущих запусков
+	cleanBD(t, databaseDsn, stor)
+	defer cleanBD(t, databaseDsn, stor)
+
+	{
+		// Test. successful add data--------------------------------
+		dataName := "first data"
+		userID := "test user id"
+		version1EncryptedData := []byte("some encrypted data version 1")
+		version2EncryptedData := []byte("some encrypted data version 2")
+
+		// добавляю новые данные в хранилище
+		ok, err := stor.AddEncryptedData(ctx, userID, data.EncryptedData{
+			EncryptedData: []byte("some encrypted data initial version"),
+			Name:          dataName,
+		}, data.SAVED)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		// изменяю уже сохраненные данные
+		dataToReplace := []data.EncryptedData{{Name: dataName, EncryptedData: version1EncryptedData},
+			{Name: dataName, EncryptedData: version2EncryptedData}}
+
+		ok, err = stor.ReplaceDataWithMultiVersionData(ctx, userID, dataToReplace, data.SAVED)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		// Проверка хранящихся в БД данных
+		data, err := stor.GetAllEncryptedData(ctx, userID)
+		require.NoError(t, err)
+		assert.Equal(t, 1, len(data))
+		assert.Equal(t, 2, len(data[0]))
+
+		assert.Equal(t, dataName, data[0][0].Name)
+		assert.Equal(t, version1EncryptedData, data[0][0].EncryptedData)
+
+		assert.Equal(t, dataName, data[0][1].Name)
+		assert.Equal(t, version2EncryptedData, data[0][1].EncryptedData)
+	}
+	{
+		// Test. Context exceeded
+		ctx, cancel := context.WithCancel(context.Background())
+		// отменяю контекст
+		cancel()
+		// пытаюсь изменить данные в хранилище
+		_, err = stor.ReplaceDataWithMultiVersionData(ctx, "some user id", []data.EncryptedData{{
+			EncryptedData: []byte("some encrypted data"),
+			Name:          "some data name",
+		}}, data.SAVED)
+		require.Error(t, err)
+	}
+	{
+		// Test. Data does not exist
+		// Попытка исправить данные, которых нет в хранилище
+		encryptedData := []byte("some not exist encrypted data")
+		userID := "test user id"
+		userData := data.EncryptedData{
+			EncryptedData: encryptedData,
+			Name:          "not exist data",
+		}
+		ok, err := stor.ReplaceDataWithMultiVersionData(ctx, userID, []data.EncryptedData{userData}, data.SAVED)
+		require.NoError(t, err)
+		assert.Equal(t, false, ok)
+	}
+	{
+		// Тест с попыткой изменить данные в хранилище на данный, у которых не ни одной версии
+		userID := "test user id"
+
+		ok, err := stor.ReplaceDataWithMultiVersionData(ctx, userID, nil, data.SAVED)
+		require.Error(t, err)
+		assert.Equal(t, false, ok)
+
+		ok, err = stor.ReplaceDataWithMultiVersionData(ctx, userID, []data.EncryptedData{}, data.SAVED)
+		require.Error(t, err)
+		assert.Equal(t, false, ok)
+	}
+}

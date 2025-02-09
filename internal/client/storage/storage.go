@@ -17,5 +17,7 @@ type (
 		repoStorage.IEncryptedStorage
 		EncryptedDataGetterByStatus
 		ChangeStatusOfEncryptedData(ctx context.Context, userID, dataName string, newStatus int) (ok bool, err error) // Изменяет статус существующих данных.
+		ReplaceDataWithMultiVersionData(ctx context.Context, idUser string, data []data.EncryptedData,
+			status int) (bool, error) // Для замены существующих в хранилище на данные с несколькими версиями
 	}
 )

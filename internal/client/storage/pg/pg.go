@@ -208,7 +208,7 @@ func (s Store) ReplaceEncryptedData(ctx context.Context, idUser string, userData
 		return false, fmt.Errorf("prepare context error, %w", err)
 	}
 	defer stmt.Close()
-	result, err := stmt.ExecContext(ctx, idUser, userData.Name, pq.Array([][]byte{userData.EncryptedData}), data.CHANGED)
+	result, err := stmt.ExecContext(ctx, idUser, userData.Name, [][]byte{userData.EncryptedData}, data.CHANGED)
 
 	if err != nil {
 		return false, fmt.Errorf("query execution error, %w", err)
@@ -377,7 +377,7 @@ func (s Store) SetToken(ctx context.Context, login, token string) (bool, error) 
 
 // ChangeStatusOfEncryptedData - метод для изменения статуса существующих данных у пользователя по его ID.
 // В случае, если пользователь или данные не найдены, возвращается false.
-func (s Store) ChangeStatusOfEncryptedData(ctx context.Context, userID, dataName string, newStatus int) (ok bool, err error){
+func (s Store) ChangeStatusOfEncryptedData(ctx context.Context, userID, dataName string, newStatus int) (ok bool, err error) {
 	query := `
 	UPDATE user_data
 	SET status = $3
@@ -398,6 +398,46 @@ func (s Store) ChangeStatusOfEncryptedData(ctx context.Context, userID, dataName
 	if rowsAffected == 0 {
 		// попытка обновить данные, которых не существует
 		// пользователь с данным логином не зарегистрирован или данные не найдены.
+		return false, nil
+	}
+	return true, nil
+}
+
+// ReplaceDataWithMultiVersionData - метод для замены существующих в хранилище на данные с несколькими версиями
+func (s Store) ReplaceDataWithMultiVersionData(ctx context.Context, idUser string, userData []data.EncryptedData,
+	status int) (bool, error) {
+	// проверяю, что существует как минимум одна версия данных
+	if len(userData) < 1 {
+		return false, fmt.Errorf("no one version of data is exists")
+	}
+
+	// Инициализирую слайс для хранения данных в виде слайса байт. Такой тип данных подходит для сохранения в БД
+	dataToInsert := make([][]byte, len(userData))
+
+	// Преобразую полученные данные пользователя в вид, готовый к сохранению в БД
+	for i, d := range userData {
+		dataToInsert[i] = d.EncryptedData
+	}
+
+	query := `
+	UPDATE user_data
+	SET encrypted_data = $3, status = $4
+	WHERE user_id = $1 AND data_name = $2
+`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		return false, fmt.Errorf("prepare context error, %w", err)
+	}
+	defer stmt.Close()
+	result, err := stmt.ExecContext(ctx, idUser, userData[0].Name, dataToInsert, status)
+
+	if err != nil {
+		return false, fmt.Errorf("query execution error, %w", err)
+	}
+
+	rowsAffected, _ := result.RowsAffected()
+	if rowsAffected == 0 {
+		// попытка обновить данные, которых не существует
 		return false, nil
 	}
 	return true, nil

@@ -1,14 +1,18 @@
 package synchronization
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"gophkeeper/internal/client/identity"
+	"gophkeeper/internal/client/logger"
 	"gophkeeper/internal/client/storage"
 	"gophkeeper/internal/repositories/data"
 	"net/http"
 
 	"github.com/go-resty/resty/v2"
+	"go.uber.org/zap"
 )
 
 // SynchronizeNewLocalData - функция для сохранения локальных данных со статусом NEW на сервере.
@@ -116,6 +120,69 @@ func SynchronizeChangedLocalData(ctx context.Context, stor storage.IEncryptedCli
 		}
 
 		return fmt.Errorf("failed to save data in server with status %d", resp.StatusCode())
+	}
+	return nil
+}
+
+// SynchronizeDataFromServer - функция для сохранения локальных данных со статусом CHANGED на сервере.
+// URL представляет собой адрес до хэндлера сервера для созранения дополнительной версии уже существующих данных.
+func SynchronizeDataFromServer(ctx context.Context, stor storage.IEncryptedClientStorage, info identity.IUserInfoStorage,
+	client *resty.Client, url string) error {
+	// Извлекаю данные текущего пользователя
+	authData, id := info.Get()
+
+	// Отправляю запрос на сервер для получения актуальных данных пользователя
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		Get(url)
+
+	if err != nil {
+		return fmt.Errorf("failed to post request to server for adding changed client data, %w", err)
+	}
+	// В случае, если сервер не обработал запрос со статусом 200 возвращаю ошибку
+	if resp.StatusCode() != http.StatusOK {
+		return fmt.Errorf("failed to get actual user data from server with status %d", resp.StatusCode())
+	}
+
+	// Создаю переменную для хранения актуальных данных пользователя полученных от сервера
+	dataFromServer := make([][]data.EncryptedData, 0)
+
+	// Декодирую ответ сервера в структуру
+	if err := json.NewDecoder(bytes.NewReader(resp.Body())).Decode(&dataFromServer); err != nil {
+		return fmt.Errorf("failed to decode server answer from json, %w", err)
+	}
+
+	// Итерируюсь по полученным данным в случае успешного получения данных от сервера
+	for _, d := range dataFromServer {
+		if len(d) == 0 {
+			return fmt.Errorf("no version of data exists")
+		}
+
+		// Попытка заменить старую версию данных в локальном хранилище на актуальную, полученную от сервера
+		status := data.SAVED
+		// Если существует несколько версий данных, то устанавливаю статус CONFLICT
+		if len(d) > 1 {
+			logger.ClientLog.Debug("user got data with multiply version", zap.String("login", authData.Login),
+				zap.String("data name", d[0].Name))
+			status = data.CONFLICT
+		}
+
+		// Меняю существующие данные в хранилище на актуальную версию сервера
+		ok, err := stor.ReplaceDataWithMultiVersionData(ctx, id, d, status)
+		if err != nil {
+			return fmt.Errorf("failed to replace data in storage, %w", err)
+		}
+
+		// Происходит попытка заменить данные, которых нет в хранилище.
+		// В таком случае, произвожу попытку добавить новые данные.
+		if !ok {
+			logger.ClientLog.Info("attempting to change not existing data", zap.String("login", authData.Login),
+				zap.String("data name", d[0].Name))
+			ok, err := stor.AddEncryptedData(ctx, id, d[0], data.SAVED)
+			if err != nil || !ok {
+				return fmt.Errorf("failed to add new data %s in storage, %w", d[0].Name, err)
+			}
+		}
 	}
 	return nil
 }

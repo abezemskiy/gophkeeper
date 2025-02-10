@@ -1069,3 +1069,32 @@ func TestHandleConflictData(t *testing.T) {
 		})
 	}
 }
+
+func TestHandleOtherRequest(t *testing.T) {
+	{
+		r := chi.NewRouter()
+		r.Post("/test", HandleOtherRequest())
+		// создаю тестовый запрос
+		request := httptest.NewRequest(http.MethodPost, "/test", nil)
+
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, request)
+
+		res := w.Result()
+		defer res.Body.Close() // закрываю тело ответа
+		assert.Equal(t, http.StatusNotFound, res.StatusCode)
+	}
+	{
+		r := chi.NewRouter()
+		r.Get("/test", HandleOtherRequest())
+		// создаю тестовый запрос
+		request := httptest.NewRequest(http.MethodGet, "/test", nil)
+
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, request)
+
+		res := w.Result()
+		defer res.Body.Close() // закрываю тело ответа
+		assert.Equal(t, http.StatusNotFound, res.StatusCode)
+	}
+}

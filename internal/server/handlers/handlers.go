@@ -373,3 +373,11 @@ func HandleConflictDataHandler(stor storage.IEncryptedServerStorage) http.Handle
 	}
 	return fn
 }
+
+// HandleOtherRequest - обработка нераспознанных http запросов к сервису.
+func HandleOtherRequest() http.HandlerFunc {
+	return func(res http.ResponseWriter, _ *http.Request) {
+		res.Header().Set("Content-Type", "text/plain")
+		res.WriteHeader(http.StatusNotFound)
+	}
+}

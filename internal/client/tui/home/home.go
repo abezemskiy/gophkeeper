@@ -1,18 +1,19 @@
-package tui
+package home
 
 import (
+	"gophkeeper/internal/client/tui"
 	"gophkeeper/internal/client/tui/app"
 
 	"github.com/rivo/tview"
 )
 
-// HomePage создаёт экран с данными пользователя.
+// HomePage - приветственное окно для входа в приложение.
 func HomePage(app *app.App) tview.Primitive {
 	list := tview.NewList().
-		AddItem("Добавить данные", "", 'a', func() { app.SwitchTo("add") }).
-		AddItem("Выйти", "", 'q', func() { app.SwitchTo("login") })
+		AddItem("Регистрация", "", 'a', func() { app.SwitchTo(tui.Register) }).
+		AddItem("Авторизация", "", 'q', func() { app.SwitchTo(tui.Login) })
 
-	list.SetBorder(true).SetTitle("Ваши данные")
+	list.SetBorder(true).SetTitle("Добро пожаловать в gophkeeper")
 
 	return list
 }

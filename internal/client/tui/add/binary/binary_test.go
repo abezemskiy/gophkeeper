@@ -25,7 +25,7 @@ import (
 
 func TestAddBinaryPage(t *testing.T) {
 	// Создаем тестовое приложение
-	testApp := app.App{}
+	testApp := &app.App{}
 
 	// Создаем страницу ввода пароля
 	passwordPage := AddBinaryPage(context.Background(), "some/url", nil, nil, nil, testApp)

@@ -53,7 +53,6 @@ func OnAfterMiddleware(info identity.IUserInfoStorage, ident identity.ClientIden
 			}
 
 			// Отправляю запрос на авторизацию пользователя на сервере
-			// Отправляю запрос регистрации пользователя на сервер
 			resp, err := c.R().
 				SetHeader("Content-Type", "application/json").
 				SetBody(repoIdent.IdentityData{

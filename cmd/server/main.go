@@ -100,6 +100,7 @@ func MetricRouter(stor *pg.Store) chi.Router {
 		r.Post("/authorize", logger.RequestLogger(handlers.AuthorizeHandler(stor)))
 
 		r.Route("/data", func(r chi.Router) {
+			r.Post("/add", logger.RequestLogger(auth.Middleware(handlers.AddEncryptedDataHandler(stor))))
 			r.Post("/replace", logger.RequestLogger(auth.Middleware(handlers.ReplaceEncryptedDataHandler(stor))))
 			r.Get("/get", logger.RequestLogger(auth.Middleware(handlers.GetAllEncryptedDataHandler(stor))))
 			r.Delete("/delete", logger.RequestLogger(auth.Middleware(handlers.DeleteEncryptedDataHandler(stor))))

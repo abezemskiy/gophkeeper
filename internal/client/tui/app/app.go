@@ -12,8 +12,8 @@ type App struct {
 
 // Primitives - структуры для хранения и передачи экранов.
 type Primitives struct {
-	name string
-	prim func(*App) tview.Primitive
+	Name string
+	Prim func(*App) tview.Primitive
 }
 
 // NewApp создаёт новое TUI-приложение.
@@ -25,7 +25,7 @@ func NewApp(prims []Primitives) *App {
 
 	// Добавляем экраны
 	for _, p := range prims {
-		tuiApp.Pages.AddPage(p.name, p.prim(tuiApp), true, true)
+		tuiApp.Pages.AddPage(p.Name, p.Prim(tuiApp), true, true)
 	}
 
 	tuiApp.App.SetRoot(tuiApp.Pages, true)
@@ -41,4 +41,9 @@ func (a *App) Run() error {
 // SwitchTo переключает экран.
 func (a *App) SwitchTo(page string) {
 	a.Pages.SwitchToPage(page)
+}
+
+// Stop останавливает приложение.
+func (a *App) Stop() {
+	a.App.Stop()
 }

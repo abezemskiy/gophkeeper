@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gophkeeper/internal/client/encr"
 	"gophkeeper/internal/client/handlers"
 	"gophkeeper/internal/client/identity"
 	"gophkeeper/internal/client/logger"
@@ -21,6 +20,7 @@ import (
 	"github.com/rivo/tview"
 	"go.uber.org/zap"
 )
+
 // dataInfo - вспомогательная структура для передачи полученных от пользоавтеля данных в функцию сохранения данных в сервисе.
 type dataInfo struct {
 	pass       data.Password
@@ -32,13 +32,13 @@ type dataInfo struct {
 
 // AddPasswordPage - TUI страница добавления нового пароля пользователя.
 func AddPasswordPage(ctx context.Context, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
-	info identity.IUserInfoStorage, app app.App) tview.Primitive {
+	info identity.IUserInfoStorage, app *app.App) tview.Primitive {
 
 	form := tview.NewForm()
 	// структура для введенной пары логин пароль
 	dataInfo := dataInfo{
 		createDate: time.Now(),
-		editDate: time.Now(),
+		editDate:   time.Now(),
 	}
 
 	form.AddInputField("Имя данных", "", 20, nil, func(text string) { dataInfo.name = text })
@@ -94,7 +94,7 @@ func save(ctx context.Context, userID, url string, client *resty.Client, stor st
 	}
 
 	// Создаю структуру типа data.Data
-	dataToEncr := &repoData.Data{
+	userData := &repoData.Data{
 		Data:       buf.Bytes(),
 		Type:       repoData.PASSWORD,
 		Name:       dataInfo.name,
@@ -104,14 +104,8 @@ func save(ctx context.Context, userID, url string, client *resty.Client, stor st
 		EditDate:   dataInfo.editDate,
 	}
 
-	// шифрую данные с помощью мастер пароля пользователя
-	encrData, err := encr.EncryptData(masterPass, dataToEncr)
-	if err != nil {
-		return false, fmt.Errorf("failed to encrypt data, %w", err)
-	}
-
 	// Сохраняю данные в хранилище
-	ok, err := handlers.SaveEncryptedData(ctx, userID, url, client, stor, encrData)
+	ok, err := handlers.SaveData(ctx, userID, url, masterPass, client, stor, userData)
 	if err != nil {
 		return false, fmt.Errorf("failed to save data, %w", err)
 	}

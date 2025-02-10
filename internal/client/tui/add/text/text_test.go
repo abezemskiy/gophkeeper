@@ -24,7 +24,7 @@ import (
 
 func TestAddPasswordPage(t *testing.T) {
 	// Создаем тестовое приложение
-	testApp := app.App{}
+	testApp := &app.App{}
 
 	// Создаем страницу ввода пароля
 	passwordPage := AddTextPage(context.Background(), "some/url", nil, nil, nil, testApp)

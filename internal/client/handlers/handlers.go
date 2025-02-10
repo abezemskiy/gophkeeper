@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"gophkeeper/internal/client/encr"
 	"gophkeeper/internal/client/identity"
 	"gophkeeper/internal/client/logger"
 	"gophkeeper/internal/client/storage"
@@ -84,6 +85,29 @@ func SaveEncryptedData(ctx context.Context, userID, url string, client *resty.Cl
 	return false, fmt.Errorf("push json encrypted to server error, status %d", resp.StatusCode())
 }
 
+// SaveData - функция для сохранения новых данных. Новые данные зашифровываются с помощью мастер пароля, сохраняются в локальном хранилище
+// и происходит попытка отправки данных на сервер.
+func SaveData(ctx context.Context, userID, url, masterPass string, client *resty.Client, stor storage.IEncryptedClientStorage,
+	userData *data.Data) (bool, error) {
+
+	// шифрую данные с помощью мастер пароля пользователя
+	encrData, err := encr.EncryptData(masterPass, userData)
+	if err != nil {
+		logger.ClientLog.Error("failed to encrypt data", zap.String("error", error.Error(err)))
+		return false, fmt.Errorf("failed to encrypt data, %w", err)
+	}
+
+	// Сохраняю данные в хранилище
+	ok, err := SaveEncryptedData(ctx, userID, url, client, stor, encrData)
+	if err != nil {
+		return false, fmt.Errorf("failed to save data, %w", err)
+	}
+	if !ok {
+		return false, nil
+	}
+	return true, nil
+}
+
 // Register - хэндлер для регистрации нового пользователя.
 func Register(ctx context.Context, url string, authData *identity.AuthData, client *resty.Client, ident identity.ClientIdentifier) (bool, error) {
 	// проверяю корректность логина
@@ -124,49 +148,50 @@ func Register(ctx context.Context, url string, authData *identity.AuthData, clie
 		return false, fmt.Errorf("sending registration request failed, %w", err)
 	}
 
-	// Сервер успешно зарегистрировал нового пользователя
-	if resp.StatusCode() == http.StatusOK {
-		logger.ClientLog.Debug("successful register new user on server")
-
-		// вычисляю уникальный идентификатор пользователя. Идентификатора пользователя отличаются на сервере и в локальном хранилище.
-		id, err := id.GenerateId()
-		if err != nil {
-			logger.ClientLog.Error("failed to generate id", zap.String("error", error.Error(err)))
-			return false, fmt.Errorf("failed to generate id, %w", err)
-		}
-
-		// Получаю токен из заголовка, который отправил сервер.
-		token, err := header.GetTokenFromRestyResponseHeader(resp)
-		if err != nil {
-			logger.ClientLog.Error("failed to get JWT from server responce", zap.String("error", error.Error(err)))
-			return false, fmt.Errorf("failed to get JWT from server responce, %w", err)
-		}
-
-		// Сохраняю данные пользователя в локальном хранилище
-		ok, err := ident.Register(ctx, authData.Login, hash, id, token)
-		if err != nil {
-			logger.ClientLog.Error("failed to register user in local storage", zap.String("error", error.Error(err)))
-			return false, fmt.Errorf("failed to register user in local storage, %w", err)
-		}
-		// Пользователь уже зарегистрирован в хранилище
-		if !ok {
-			logger.ClientLog.Error("such user already exist", zap.String("login", authData.Login))
-			return false, nil
-		}
-
-		// Успешная регистрация нового пользователя
-		logger.ClientLog.Info("new user successfully has been registered", zap.String("login", authData.Login))
-		return true, nil
-	}
-
 	// пользователь с такими данными уже зарегистрирован, возвращаю false.
 	if resp.StatusCode() == http.StatusConflict {
 		logger.ClientLog.Error("such user already exist", zap.String("login", authData.Login))
 		return false, nil
 	}
 
-	logger.ClientLog.Error("bad server status", zap.String("status", fmt.Sprint(resp.StatusCode())))
-	return false, fmt.Errorf("bad server status %d", resp.StatusCode())
+	if resp.StatusCode() != http.StatusOK {
+		logger.ClientLog.Error("bad server status", zap.String("status", fmt.Sprint(resp.StatusCode())))
+		return false, fmt.Errorf("bad server status %d", resp.StatusCode())
+	}
+
+	// Сервер успешно обработал запрос пользователя на регистрацию
+	logger.ClientLog.Debug("successful register new user on server")
+
+	// вычисляю уникальный идентификатор пользователя. Идентификатора пользователя отличаются на сервере и в локальном хранилище.
+	id, err := id.GenerateId()
+	if err != nil {
+		logger.ClientLog.Error("failed to generate id", zap.String("error", error.Error(err)))
+		return false, fmt.Errorf("failed to generate id, %w", err)
+	}
+
+	// Получаю токен из заголовка, который отправил сервер.
+	token, err := header.GetTokenFromRestyResponseHeader(resp)
+	if err != nil {
+		logger.ClientLog.Error("failed to get JWT from server responce", zap.String("error", error.Error(err)))
+		return false, fmt.Errorf("failed to get JWT from server responce, %w", err)
+	}
+
+	// Сохраняю данные пользователя в локальном хранилище
+	ok, err = ident.Register(ctx, authData.Login, hash, id, token)
+	if err != nil {
+		logger.ClientLog.Error("failed to register user in local storage", zap.String("error", error.Error(err)))
+		return false, fmt.Errorf("failed to register user in local storage, %w", err)
+	}
+	// Пользователь уже зарегистрирован в хранилище
+	if !ok {
+		logger.ClientLog.Error("such user already exist", zap.String("login", authData.Login))
+		return false, nil
+	}
+
+	// Успешная регистрация нового пользователя
+	logger.ClientLog.Info("new user successfully has been registered", zap.String("login", authData.Login))
+	return true, nil
+
 }
 
 // Authorize - хэндлер для авторизации пользователя в системе.

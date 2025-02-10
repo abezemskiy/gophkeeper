@@ -9,10 +9,10 @@ import (
 )
 
 var (
-	netAddr     string // адрес запуска сервиса
-	databaseDsn string // адрес базы данных
-	logLevel    string // уровень логирования
-	configFile  string // путь к файлу конфигурации
+	netAddr       string // адрес запуска сервиса
+	databaseDsn   string // адрес базы данных
+	logLevel      string // уровень логирования
+	configFile    string // путь к файлу конфигурации
 )
 
 // parseVariables - функция для установки конфигурационных параметров приложения.

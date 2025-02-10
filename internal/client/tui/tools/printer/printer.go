@@ -7,7 +7,7 @@ import (
 )
 
 // Error - функция для вывода ошибок на экран пользователя.
-func Error(app app.App, message string) {
+func Error(app *app.App, message string) {
 	modal := tview.NewModal().
 		SetText("Ошибка: " + message).
 		AddButtons([]string{"OK"}).
@@ -18,7 +18,7 @@ func Error(app app.App, message string) {
 }
 
 // Message - функция для вывода сообщения на экран пользователя.
-func Message(app app.App, message string) {
+func Message(app *app.App, message string) {
 	modal := tview.NewModal().
 		SetText("Сообщение: " + message).
 		AddButtons([]string{"OK"}).

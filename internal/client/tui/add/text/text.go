@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gophkeeper/internal/client/encr"
 	"gophkeeper/internal/client/handlers"
 	"gophkeeper/internal/client/identity"
 	"gophkeeper/internal/client/logger"
@@ -33,7 +32,7 @@ type dataInfo struct {
 
 // AddTextPage - TUI страница добавления нового текста пользователя.
 func AddTextPage(ctx context.Context, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
-	info identity.IUserInfoStorage, app app.App) tview.Primitive {
+	info identity.IUserInfoStorage, app *app.App) tview.Primitive {
 
 	form := tview.NewForm()
 	// структура для введенной пары логин пароль
@@ -90,7 +89,7 @@ func save(ctx context.Context, userID, url string, client *resty.Client, stor st
 	}
 
 	// Создаю структуру типа data.Data
-	dataToEncr := &repoData.Data{
+	userData := &repoData.Data{
 		Data:       buf.Bytes(),
 		Type:       repoData.TEXT,
 		Name:       dataInfo.name,
@@ -100,14 +99,8 @@ func save(ctx context.Context, userID, url string, client *resty.Client, stor st
 		EditDate:   dataInfo.editDate,
 	}
 
-	// шифрую данные с помощью мастер пароля пользователя
-	encrData, err := encr.EncryptData(masterPass, dataToEncr)
-	if err != nil {
-		return false, fmt.Errorf("failed to encrypt data, %w", err)
-	}
-
 	// Сохраняю данные в хранилище
-	ok, err := handlers.SaveEncryptedData(ctx, userID, url, client, stor, encrData)
+	ok, err := handlers.SaveData(ctx, userID, url, masterPass, client, stor, userData)
 	if err != nil {
 		return false, fmt.Errorf("failed to save data, %w", err)
 	}

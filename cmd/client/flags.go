@@ -3,16 +3,17 @@ package main
 import (
 	"flag"
 	"fmt"
+	"gophkeeper/internal/client/storage/inmemory"
 	"gophkeeper/internal/server/config"
 	"log"
 	"os"
 )
 
 var (
-	netAddr       string // адрес запуска сервиса
-	databaseDsn   string // адрес базы данных
-	logLevel      string // уровень логирования
-	configFile    string // путь к файлу конфигурации
+	netAddr     string // адрес запуска сервиса
+	databaseDsn string // адрес базы данных
+	logLevel    string // уровень логирования
+	configFile  string // путь к файлу конфигурации
 )
 
 // parseVariables - функция для установки конфигурационных параметров приложения.
@@ -21,7 +22,16 @@ func parseVariables() error {
 	parseFlags()
 	parseConfigFile()
 	parseEnvironment()
-	return checkVariables()
+
+	// Проверка корректности установки глобальных переменных
+	err := checkVariables()
+	if err != nil {
+		return err
+	}
+
+	// устанавливаю время обновления данных каждые 2 секунды
+	inmemory.SetUpdatingPeriod(5)
+	return nil
 }
 
 // parseFlags - функция для определения параметров конфигурации из флагов.

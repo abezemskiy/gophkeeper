@@ -2,6 +2,7 @@ package storage
 
 import (
 	"context"
+	"gophkeeper/internal/client/identity"
 	"gophkeeper/internal/repositories/data"
 	repoStorage "gophkeeper/internal/repositories/storage"
 )
@@ -25,12 +26,12 @@ type (
 type (
 	// DataWriter - интерфейс для добавления данных во временное хранилище.
 	DataWriter interface {
-		AddData(ctx context.Context, idUser, data data.Data) error // загружаю зашифрованные данные по идентификатору
+		Update(ctx context.Context, stor IEncryptedClientStorage, info identity.IUserInfoStorage) error // обновляю данные пользователя из постоянного хранилища.
 	}
 
 	// DataReader - интерфейс для выгрузки данных у конкретного пользователя по его id.
 	DataReader interface {
-		GetAllData(ctx context.Context, idUser string) ([][]data.Data, error) // Возвращает слайс данных.
+		GetAll() [][]data.Data // Возвращает слайс расшифрованных данных.
 	}
 
 	// IStorage - интерфейс хранения данных пользователей в незашифрованном виде.

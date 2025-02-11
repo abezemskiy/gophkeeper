@@ -8,6 +8,7 @@ import (
 	"gophkeeper/internal/client/logger"
 	"gophkeeper/internal/client/storage"
 	"gophkeeper/internal/client/storage/info"
+	"gophkeeper/internal/client/storage/inmemory"
 	"gophkeeper/internal/client/storage/pg"
 	"gophkeeper/internal/client/synchronization"
 	"gophkeeper/internal/client/tui"
@@ -65,15 +66,18 @@ func main() {
 	// Инициализирую хранилище данных пользователя в оперативной памяти
 	info := info.NewUserInfoStorage()
 
+	// Инициализирую хранилище расшифрованных данных пользователя в оперативной памяти
+	decrData := inmemory.NewDecryptedData()
+
 	// Инициализирую resty клиента
 	client := resty.New()
 
 	// ------------------------------------------------------------------------------
-	run(ctx, stor, info, client)
+	run(ctx, stor, info, client, decrData)
 }
 
 // run - будет полезна при инициализации зависимостей клиента перед запуском
-func run(ctx context.Context, stor *pg.Store, info identity.IUserInfoStorage, client *resty.Client) {
+func run(ctx context.Context, stor *pg.Store, info identity.IUserInfoStorage, client *resty.Client, decrData storage.IStorage) {
 	// инициализация логера
 	if err := logger.Initialize(logLevel); err != nil {
 		log.Fatalf("Error starting client: %v", err)
@@ -135,6 +139,28 @@ func run(ctx context.Context, stor *pg.Store, info identity.IUserInfoStorage, cl
 		}
 
 	}(ctx, stor, info, stor, client, &wg)
+
+	// Запускаю фоновое обновление расшифрованных данных пользователя во временном хранилище
+	wg.Add(1)
+	go func() {
+		ticker := time.NewTicker(inmemory.GetUpdatingPeriod())
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				wg.Done()
+				logger.ClientLog.Info("Stopping decrypted data updating")
+				return
+			case <-ticker.C:
+				logger.ClientLog.Info("Start decrypted data updating")
+				err := decrData.Update(ctx, stor, info)
+				if err != nil {
+					logger.ClientLog.Error("failed to update decrypted data", zap.String("error", err.Error()))
+				}
+			}
+		}
+	}()
 
 	// Канал для получения сигнала прерывания
 	quit := make(chan os.Signal, 1)

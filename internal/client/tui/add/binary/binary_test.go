@@ -28,7 +28,7 @@ func TestAddBinaryPage(t *testing.T) {
 	testApp := &app.App{}
 
 	// Создаем страницу ввода пароля
-	passwordPage := AddBinaryPage(context.Background(), "some/url", nil, nil, nil, testApp)
+	passwordPage := AddBinaryPage(context.Background(), "some/url", nil, nil, nil)(testApp)
 
 	// Проверяем, что это форма
 	form, ok := passwordPage.(*tview.Form)

@@ -27,7 +27,7 @@ func TestAddPasswordPage(t *testing.T) {
 	testApp := &app.App{}
 
 	// Создаем страницу ввода пароля
-	passwordPage := AddPasswordPage(context.Background(), "some/url", nil, nil, nil, testApp)
+	passwordPage := AddPasswordPage(context.Background(), "some/url", nil, nil, nil)(testApp)
 
 	// Проверяем, что это форма
 	form, ok := passwordPage.(*tview.Form)

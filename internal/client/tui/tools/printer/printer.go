@@ -8,22 +8,30 @@ import (
 
 // Error - функция для вывода ошибок на экран пользователя.
 func Error(app *app.App, message string) {
-	modal := tview.NewModal().
-		SetText("Ошибка: " + message).
-		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			app.Pages.RemovePage("error")
+	go func() {
+		app.App.QueueUpdateDraw(func() {
+			modal := tview.NewModal().
+				SetText("Ошибка: " + message).
+				AddButtons([]string{"OK"}).
+				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+					app.Pages.RemovePage("error")
+				})
+			app.Pages.AddPage("error", modal, true, true)
 		})
-	app.Pages.AddPage("error", modal, true, true)
+	}()
 }
 
 // Message - функция для вывода сообщения на экран пользователя.
 func Message(app *app.App, message string) {
-	modal := tview.NewModal().
-		SetText("Сообщение: " + message).
-		AddButtons([]string{"OK"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			app.Pages.RemovePage("message")
+	go func() {
+		app.App.QueueUpdateDraw(func() {
+			modal := tview.NewModal().
+				SetText("Сообщение: " + message).
+				AddButtons([]string{"OK"}).
+				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+					app.Pages.RemovePage("message")
+				})
+			app.Pages.AddPage("message", modal, true, true)
 		})
-	app.Pages.AddPage("message", modal, true, true)
+	}()
 }

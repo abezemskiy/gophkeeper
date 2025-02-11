@@ -11,6 +11,7 @@ import (
 	"gophkeeper/internal/client/logger"
 	"gophkeeper/internal/client/storage"
 	"gophkeeper/internal/client/storage/data"
+	"gophkeeper/internal/client/tui"
 	"gophkeeper/internal/client/tui/app"
 	"gophkeeper/internal/client/tui/tools/printer"
 	repoData "gophkeeper/internal/repositories/data"
@@ -32,47 +33,56 @@ type dataInfo struct {
 
 // AddTextPage - TUI страница добавления нового текста пользователя.
 func AddTextPage(ctx context.Context, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
-	info identity.IUserInfoStorage, app *app.App) tview.Primitive {
+	info identity.IUserInfoStorage) func(app *app.App) tview.Primitive {
 
-	form := tview.NewForm()
-	// структура для введенной пары логин пароль
-	dataInfo := dataInfo{
-		createDate: time.Now(),
-		editDate:   time.Now(),
+	return func(app *app.App) tview.Primitive {
+		form := tview.NewForm()
+		// структура для введенной пары логин пароль
+		dataInfo := dataInfo{
+			createDate: time.Now(),
+			editDate:   time.Now(),
+		}
+
+		form.AddInputField("Имя данных", "", 20, nil, func(text string) { dataInfo.name = text })
+		form.AddInputField("Текст", "", 200, nil, func(text string) { dataInfo.text.Text = text })
+		form.AddInputField("Описание", "", 20, nil, func(text string) { dataInfo.metaInfo = text })
+
+		form.AddButton("Сохранить", func() {
+			// проверяю наличие в приложении мастер пароля
+			authData, id := info.Get()
+			if authData.Password == "" {
+				// мастер пароль не установлен, возвращаю пользователя на страницу аутентификации.
+				app.SwitchTo(tui.Login)
+				return
+			}
+
+			ok, err := save(ctx, id, url, client, stor, dataInfo, authData.Password)
+			if err != nil {
+				logger.ClientLog.Error("save data error", zap.String("error", error.Error(err)))
+				printer.Error(app, fmt.Sprintf("save data error, %v", err))
+
+				app.SwitchTo(tui.AdddText)
+				return
+			}
+			if !ok {
+				logger.ClientLog.Error("data is not unique", zap.String("name", dataInfo.name))
+				printer.Error(app, fmt.Sprintf("data is not unique, name %s", dataInfo.name))
+
+				app.SwitchTo(tui.AdddText)
+				return
+			}
+
+			// Печатаю сообщение об успешном сохранении данных
+			printer.Message(app, "data saved successfully")
+
+			// перенаправляю пользователя на страницу данных
+			app.SwitchTo(tui.Data)
+		})
+		form.AddButton("Отмена", func() { app.SwitchTo(tui.Add) })
+
+		form.SetBorder(true).SetTitle("Добавить текст")
+		return form
 	}
-
-	form.AddInputField("Имя данных", "", 20, nil, func(text string) { dataInfo.name = text })
-	form.AddInputField("Текст", "", 200, nil, func(text string) { dataInfo.text.Text = text })
-	form.AddInputField("Описание", "", 20, nil, func(text string) { dataInfo.metaInfo = text })
-
-	form.AddButton("Сохранить", func() {
-		// проверяю наличие в приложении мастер пароля
-		authData, id := info.Get()
-		if authData.Password == "" {
-			// мастер пароль не установлен, возвращаю пользователя на страницу аутентификации.
-			app.SwitchTo("login")
-		}
-
-		ok, err := save(ctx, id, url, client, stor, dataInfo, authData.Password)
-		if err != nil {
-			logger.ClientLog.Error("save data error", zap.String("error", error.Error(err)))
-			printer.Error(app, fmt.Sprintf("save data error, %v", err))
-		}
-		if !ok {
-			logger.ClientLog.Error("data is not unique", zap.String("name", dataInfo.name))
-			printer.Error(app, fmt.Sprintf("data is not unique, name %s", dataInfo.name))
-		}
-
-		// Печатаю сообщение об успешном сохранении данных
-		printer.Message(app, "data saved successfully")
-
-		// перенаправляю пользователя на страницу данных
-		app.SwitchTo("home")
-	})
-	form.AddButton("Отмена", func() { app.SwitchTo("add") })
-
-	form.SetBorder(true).SetTitle("Добавить текст")
-	return form
 }
 
 func save(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,

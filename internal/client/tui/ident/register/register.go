@@ -37,14 +37,20 @@ func RegisterPage(ctx context.Context, ident identity.ClientIdentifier,
 
 				// Переключаю пользователя обратно на страницу регистрации
 				app.SwitchTo(tui.Register)
+				return
 			}
 			// Введенные пароли не совпадают
 			if authData.Password != confirmPassword {
 				logger.ClientLog.Error("passwords do not match", zap.String("login", authData.Login))
 				printer.Error(app, "passwords do not match")
 
+				// Очистка полей формы для повторной попытки регистрации
+				form.GetFormItemByLabel("Пароль").(*tview.InputField).SetText("")
+				form.GetFormItemByLabel("Подтвердите пароль").(*tview.InputField).SetText("")
+
 				// Переключаю пользователя обратно на страницу регистрации
 				app.SwitchTo(tui.Register)
+				return
 			}
 
 			// регистрирую нового пользователя
@@ -53,13 +59,23 @@ func RegisterPage(ctx context.Context, ident identity.ClientIdentifier,
 				logger.ClientLog.Error("failed to register new user", zap.String("login", authData.Login), zap.String("error", err.Error()))
 				printer.Error(app, fmt.Sprintf("failed to register new user, %v", err))
 
+				// Очистка полей формы для повторной попытки регистрации
+				form.GetFormItemByLabel("Логин").(*tview.InputField).SetText("")
+				form.GetFormItemByLabel("Пароль").(*tview.InputField).SetText("")
+				form.GetFormItemByLabel("Подтвердите пароль").(*tview.InputField).SetText("")
+
 				// Переключаю пользователя обратно на страницу регистрации
 				app.SwitchTo(tui.Register)
+				return
 			}
 			// Данный пользователь уже зарегистрирован в системе
 			if !ok {
 				logger.ClientLog.Error("user already register", zap.String("login", authData.Login))
 				printer.Error(app, "user already register")
+
+				// Переключаю пользователя на приветственную страницу
+				app.SwitchTo(tui.Home)
+				return
 			}
 			// Успешная регистрация пользователя
 			logger.ClientLog.Info("new user successfully register", zap.String("login", authData.Login))
@@ -69,12 +85,13 @@ func RegisterPage(ctx context.Context, ident identity.ClientIdentifier,
 			app.SwitchTo(tui.Login)
 		})
 
+		form.AddButton("Назад", func() { app.SwitchTo(tui.Home) })
 		form.AddButton("Выход", func() { app.App.Stop() })
 
 		form.SetBorder(true).SetTitle("Регистрация").SetTitleAlign(tview.AlignCenter)
 
 		return tview.NewFlex().
 			SetDirection(tview.FlexRow).
-			AddItem(form, 10, 1, true)
+			AddItem(form, 20, 1, true)
 	}
 }

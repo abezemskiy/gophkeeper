@@ -39,8 +39,8 @@ func (s Store) Bootstrap(ctx context.Context) error {
 	_, err = tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS auth (
 			login varchar(128) PRIMARY KEY,
-			hash varchar(128),
-			id varchar(128)
+			hash varchar(256),
+			id varchar(256)
 		)
 	`)
 	if err != nil {
@@ -56,7 +56,7 @@ func (s Store) Bootstrap(ctx context.Context) error {
 	_, err = tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS user_data (
     		id SERIAL PRIMARY KEY,                 							-- Уникальный идентификатор записи
-    		user_id varchar(128) NOT NULL,                  				-- ID пользователя
+    		user_id varchar(256) NOT NULL,                  				-- ID пользователя
     		data_name varchar(128) NOT NULL,               					-- Имя данных
     		encrypted_data BYTEA[],                							-- Массив зашифрованных данных
     		status INT NOT NULL,                   							-- Поле статуса
@@ -77,7 +77,7 @@ func (s Store) Bootstrap(ctx context.Context) error {
 	// Создаю таблицу для хранения даты последнего визита пользователя-------------------
 	_, err = tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS user_last_seen (
-			user_id varchar(128) PRIMARY KEY,
+			user_id varchar(256) PRIMARY KEY,
 			last_seen TIMESTAMP WITH TIME ZONE NOT NULL
 		)
 	`)

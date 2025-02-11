@@ -31,6 +31,7 @@ func LoginPage(ctx context.Context, ident identity.ClientIdentifier, info identi
 
 				// Переключаю пользователя обратно на страницу авторизации
 				app.SwitchTo(tui.Login)
+				return
 			}
 			// Авторизирую пользователя
 			correctPass, isRegister, err := handlers.Authorize(ctx, authData, ident, info)
@@ -40,6 +41,7 @@ func LoginPage(ctx context.Context, ident identity.ClientIdentifier, info identi
 
 				// Переключаю пользователя обратно на страницу авторизации
 				app.SwitchTo(tui.Login)
+				return
 			}
 			// Пользователь с данным логином не зарегистрирован
 			if !isRegister {
@@ -48,6 +50,7 @@ func LoginPage(ctx context.Context, ident identity.ClientIdentifier, info identi
 
 				// Переключаю пользователя обратно на страницу авторизации
 				app.SwitchTo(tui.Login)
+				return
 			}
 			// Пароль неверный
 			if !correctPass {
@@ -56,11 +59,13 @@ func LoginPage(ctx context.Context, ident identity.ClientIdentifier, info identi
 
 				// Переключаю пользователя обратно на страницу авторизации
 				app.SwitchTo(tui.Login)
+				return
 			}
 			// Авторизация прошла успешно, переключаю пользователя на страницу с его данными
 			app.SwitchTo(tui.Data)
 		})
 
+		form.AddButton("Назад", func() { app.SwitchTo(tui.Home) })
 		form.AddButton("Выход", func() { app.App.Stop() })
 
 		form.SetBorder(true).SetTitle("Авторизация").SetTitleAlign(tview.AlignCenter)

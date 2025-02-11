@@ -1,9 +1,7 @@
 package handlers
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"gophkeeper/internal/client/encr"
 	"gophkeeper/internal/client/identity"
@@ -42,18 +40,10 @@ func SaveEncryptedDataToLocalStorage(ctx context.Context, userID string, stor st
 func SaveEncryptedData(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
 	encrData *data.EncryptedData) (bool, error) {
 
-	// сериализую зашифрованные данные в json-представление  в виде слайса байт
-	var bufEncode bytes.Buffer
-	enc := json.NewEncoder(&bufEncode)
-	if err := enc.Encode(encrData); err != nil {
-		logger.ClientLog.Error("Encode encrypted data error", zap.String("error", error.Error(err)))
-		return false, fmt.Errorf("encode encrypted data error, %w", err)
-	}
-
 	// попытка отправить новые данные на сервер
 	resp, err := client.R().
 		SetHeader("Content-Type", "application/json").
-		SetBody(bufEncode).
+		SetBody(*encrData).
 		Post(url)
 
 	// Не удалось установить соединение сервером или другая ошибка подобного рода.
@@ -76,6 +66,8 @@ func SaveEncryptedData(ctx context.Context, userID, url string, client *resty.Cl
 
 	// Обработка случаю, когда на сервере произошла внутренняя ошибка
 	if resp.StatusCode() == http.StatusInternalServerError {
+		logger.ClientLog.Error("push json encrypted to server error", zap.String("status", fmt.Sprintf("%d", resp.StatusCode())))
+
 		// сохранение зашифрованных данных в локальном хранилище со статусом NEW
 		return SaveEncryptedDataToLocalStorage(ctx, userID, stor, *encrData, data.NEW)
 	}

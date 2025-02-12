@@ -14,6 +14,7 @@ import (
 	"gophkeeper/internal/repositories/data"
 	repoIdent "gophkeeper/internal/repositories/identity"
 	"net/http"
+	"strconv"
 
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"
@@ -33,6 +34,8 @@ func SaveEncryptedDataToLocalStorage(ctx context.Context, userID string, stor st
 		logger.ClientLog.Error("failed to save new encrypted data to storage", zap.String("reason", "data is already exist"))
 		return false, nil
 	}
+
+	logger.ClientLog.Debug("successful save encrypted data in local storage", zap.String("data name", encrData.Name))
 	return true, nil
 }
 
@@ -237,4 +240,55 @@ func Authorize(ctx context.Context, authData *identity.AuthData, ident identity.
 	// Пользователь успешно авторизирован
 	logger.ClientLog.Info("user successfully authorize", zap.String("login", authData.Login))
 	return true, true, nil
+}
+
+// DeleteEncryptedDataFromLocalStorage - функция для удаления данных пользователя в локальном хранилище.
+func DeleteEncryptedDataFromLocalStorage(ctx context.Context, userID, dataName string, stor storage.IEncryptedClientStorage) (bool, error) {
+
+	ok, err := stor.DeleteEncryptedData(ctx, userID, dataName)
+	if err != nil {
+		logger.ClientLog.Error("failed to delete data from local storage", zap.String("error", error.Error(err)), zap.String("data name", dataName))
+		return false, fmt.Errorf("failed to delete data from local storage, %w", err)
+	}
+	// Данных не существует
+	if !ok {
+		logger.ClientLog.Error("failed to delete data from local storage", zap.String("reason", "data does not exists"))
+		return false, nil
+	}
+
+	logger.ClientLog.Debug("successful delete data from local storage", zap.String("data name", dataName))
+	return true, nil
+}
+
+// DeleteEncryptedData - хэндлер для удаления данных пользователя на сервере и из локального хранилища по имени этих данных.
+// Удаление данных разрешено только в статусе онлайн.
+func DeleteEncryptedData(ctx context.Context, userID, url, dataName string, client *resty.Client, stor storage.IEncryptedClientStorage) (bool, error) {
+
+	// попытка удалить данные пользователя на сервере
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(data.MetaInfo{
+			Name: dataName,
+		}).
+		Delete(url)
+
+	// Не удалось установить соединение сервером или другая ошибка подобного рода.
+	// Удаление данных в состоянии офлайн запрещено, возвращаю ошибку.
+	if err != nil {
+		logger.ClientLog.Error("delete data on server error", zap.String("error", error.Error(err)), zap.String("data name", dataName))
+
+		return false, fmt.Errorf("delete data on server error, %w", err)
+	}
+
+	// В случае, если данные на сервере успешно удалены, либо данных уже не было на сервере произвожу удаление в локальном хранилище.
+	if resp.StatusCode() == http.StatusOK || resp.StatusCode() == http.StatusNotFound {
+		logger.ClientLog.Debug("successful delete data from server", zap.String("data name", dataName))
+
+		// Удаляю данные из локального хранилища
+		return DeleteEncryptedDataFromLocalStorage(ctx, userID, dataName, stor)
+	}
+
+	// Сервер вернул иной статус
+	logger.ClientLog.Error("failed to delete data from server", zap.String("status", strconv.Itoa(resp.StatusCode())), zap.String("data name", dataName))
+	return false, fmt.Errorf("failed to delete data from server with status %d", resp.StatusCode())
 }

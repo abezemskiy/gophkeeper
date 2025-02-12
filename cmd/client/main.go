@@ -12,17 +12,18 @@ import (
 	"gophkeeper/internal/client/storage/pg"
 	"gophkeeper/internal/client/synchronization"
 	"gophkeeper/internal/client/tui"
-	"gophkeeper/internal/client/tui/add"
-	"gophkeeper/internal/client/tui/add/bankcard"
-	"gophkeeper/internal/client/tui/add/binary"
-	"gophkeeper/internal/client/tui/add/password"
-	"gophkeeper/internal/client/tui/add/text"
 	"gophkeeper/internal/client/tui/app"
 	"gophkeeper/internal/client/tui/data"
+	"gophkeeper/internal/client/tui/data/add"
+	"gophkeeper/internal/client/tui/data/add/bankcard"
+	"gophkeeper/internal/client/tui/data/add/binary"
+	"gophkeeper/internal/client/tui/data/add/password"
+	"gophkeeper/internal/client/tui/data/add/text"
+	"gophkeeper/internal/client/tui/data/delete"
+	"gophkeeper/internal/client/tui/data/view"
 	"gophkeeper/internal/client/tui/home"
 	"gophkeeper/internal/client/tui/ident/authorize"
 	"gophkeeper/internal/client/tui/ident/register"
-	"gophkeeper/internal/client/tui/view"
 	repoSynch "gophkeeper/internal/repositories/synchronization"
 	"log"
 	"os"
@@ -42,6 +43,7 @@ const (
 	addDataPattern       = "/api/client/data/add"      // паттерн api для добавления новых данных на сервер
 	replaceDataPattern   = "/api/client/data/replace"  // паттерн для замены старых данных на сервере новыми
 	conflictDataPattern  = "/api/client/data/conflict" // паттерн для обработки данных с потенциальным конфликтом
+	deleteDataPattern    = "/api/client/data/delete"   // паттерн для удаления данных
 )
 
 func main() {
@@ -245,6 +247,11 @@ func createTUI(ctx context.Context, stor storage.IEncryptedClientStorage, ident 
 	prims = append(prims, app.Primitives{
 		Name: tui.AdddText,
 		Prim: text.AddTextPage(ctx, netAddr+addDataPattern, &authClient, stor, info),
+	})
+	// Добавляю страницу для удаления данных пользователя
+	prims = append(prims, app.Primitives{
+		Name: tui.Delete,
+		Prim: delete.Delete(ctx, netAddr+deleteDataPattern, &authClient, stor, info),
 	})
 	// Добавляю приветственную страницу
 	prims = append(prims, app.Primitives{

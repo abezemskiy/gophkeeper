@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"gophkeeper/internal/client/identity"
 	"gophkeeper/internal/client/storage"
@@ -605,6 +606,179 @@ func TestAuthorize(t *testing.T) {
 				return
 			}
 			assert.Equal(t, tt.want.passIsCorrect, passIsCorrect)
+		})
+	}
+}
+
+func TestDeleteEncryptedDataFromLocalStorage(t *testing.T) {
+	// регистрирую мок хранилища данных пользователей
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	m := mocks.NewMockIEncryptedClientStorage(ctrl)
+
+	{
+		// Тест с успешным удалением данных из локального хранилища
+		userID := "success user id"
+		dataName := "success data name"
+		m.EXPECT().DeleteEncryptedData(gomock.Any(), userID, dataName).Return(true, nil)
+
+		ok, err := DeleteEncryptedDataFromLocalStorage(context.Background(), userID, dataName, m)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+	}
+	{
+		// Данных не существует
+		userID := "data not exists user id"
+		dataName := "data not exists data name"
+		m.EXPECT().DeleteEncryptedData(gomock.Any(), userID, dataName).Return(false, nil)
+
+		ok, err := DeleteEncryptedDataFromLocalStorage(context.Background(), userID, dataName, m)
+		require.NoError(t, err)
+		assert.Equal(t, false, ok)
+	}
+	{
+		// Ошибка из хранилища
+		userID := "error user id"
+		dataName := "error data name"
+		m.EXPECT().DeleteEncryptedData(gomock.Any(), userID, dataName).Return(false, errors.New("some error"))
+
+		_, err := DeleteEncryptedDataFromLocalStorage(context.Background(), userID, dataName, m)
+		require.Error(t, err)
+	}
+}
+
+func TestDeleteEncryptedData(t *testing.T) {
+	// вспомогательная функция
+	testHandler := func(status int, wantDataName string) http.HandlerFunc {
+		return func(res http.ResponseWriter, req *http.Request) {
+			// устанавливаю нужный статус в ответ
+			res.WriteHeader(status)
+
+			// Проверяю имя данных в запросе к серверу
+			if status == http.StatusOK {
+				var dataMetaInfo data.MetaInfo
+				dec := json.NewDecoder(req.Body)
+				err := dec.Decode(&dataMetaInfo)
+				require.NoError(t, err)
+				assert.Equal(t, wantDataName, dataMetaInfo.Name)
+			}
+		}
+	}
+
+	// регистрирую мок хранилища данных пользователей
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+	m := mocks.NewMockIEncryptedClientStorage(ctrl)
+
+	// Тест успешного удаления, статус 200 от сервера ----------------------------------------------
+	userID := "success user id"
+	dataName := "success data name"
+	m.EXPECT().DeleteEncryptedData(gomock.Any(), userID, dataName).Return(true, nil)
+
+	// Тест успешного удаления, статус 404 от сервера ----------------------------------------------
+	notExistsUserID := "not exists user id"
+	notExistsDataName := "not exists data name"
+	m.EXPECT().DeleteEncryptedData(gomock.Any(), notExistsUserID, notExistsDataName).Return(true, nil)
+
+	type request struct {
+		userID      string
+		dataName    string
+		startServer bool
+		stor        storage.IEncryptedClientStorage
+		httpStatus  int
+	}
+	type want struct {
+		ok  bool
+		err bool
+	}
+	tests := []struct {
+		name string
+		req  request
+		want want
+	}{
+		{
+			name: "success test",
+			req: request{
+				userID:      userID,
+				dataName:    dataName,
+				startServer: true,
+				stor:        m,
+				httpStatus:  200,
+			},
+			want: want{
+				ok:  true,
+				err: false,
+			},
+		},
+		{
+			name: "data does not exists on server",
+			req: request{
+				userID:      notExistsUserID,
+				dataName:    notExistsDataName,
+				startServer: true,
+				stor:        m,
+				httpStatus:  404,
+			},
+			want: want{
+				ok:  true,
+				err: false,
+			},
+		},
+		{
+			name: "error, bad status from server",
+			req: request{
+				userID:      "bad status",
+				dataName:    "bad status",
+				startServer: true,
+				stor:        m,
+				httpStatus:  500,
+			},
+			want: want{
+				ok:  false,
+				err: true,
+			},
+		},
+		{
+			name: "not connection",
+			req: request{
+				userID:      "user id",
+				dataName:    "data name",
+				startServer: false,
+				stor:        m,
+				httpStatus:  200,
+			},
+			want: want{
+				ok:  false,
+				err: true,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// создаю тестовый http сервер
+			r := chi.NewRouter()
+			r.Delete("/test", testHandler(tt.req.httpStatus, tt.req.dataName))
+
+			// Запускаю тестовый сервер
+			ts := httptest.NewServer(r)
+			defer ts.Close()
+
+			var url string
+			if tt.req.startServer {
+				// Усанвливаю корректный адрес
+				url = ts.URL + "/test"
+			} else {
+				// устанавливаю невалидный url, иммитирую недоступность сервера
+				url = "http://wrong.address.com" + "/test"
+			}
+
+			ok, err := DeleteEncryptedData(context.Background(), tt.req.userID, url, tt.req.dataName, resty.New(), tt.req.stor)
+			if tt.want.err {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+				assert.Equal(t, tt.want.ok, ok)
+			}
 		})
 	}
 }

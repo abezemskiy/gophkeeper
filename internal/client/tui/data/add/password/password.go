@@ -52,46 +52,31 @@ func AddPasswordPage(ctx context.Context, url string, client *resty.Client, stor
 			// проверяю наличие в приложении мастер пароля
 			authData, id := info.Get()
 			if authData.Password == "" || authData.Login == "" {
-				go func() {
-					app.App.QueueUpdateDraw(func() {
-						printer.Message(app, "password or login not set")
-					})
-				}()
+				printer.Message(app, "password or login not set")
+
 				// мастер пароль не установлен, возвращаю пользователя на страницу аутентификации.
-				app.SwitchTo(tui.AddPassword)
+				app.SwitchTo(tui.Login)
 				return
 			}
 
 			ok, err := save(ctx, id, url, client, stor, dataInfo, authData.Password)
 			if err != nil {
 				logger.ClientLog.Error("save data error", zap.String("error", error.Error(err)))
-				go func() {
-					app.App.QueueUpdateDraw(func() {
-						printer.Error(app, fmt.Sprintf("save data error, %v", err))
-					})
-				}()
+				printer.Error(app, fmt.Sprintf("save data error, %v", err))
 
 				app.SwitchTo(tui.AddPassword)
 				return
 			}
 			if !ok {
 				logger.ClientLog.Error("data is not unique", zap.String("name", dataInfo.name))
-				go func() {
-					app.App.QueueUpdateDraw(func() {
-						printer.Error(app, fmt.Sprintf("data is not unique, name %s", dataInfo.name))
-					})
-				}()
+				printer.Error(app, fmt.Sprintf("data is not unique, name %s", dataInfo.name))
 
 				app.SwitchTo(tui.AddPassword)
 				return
 			}
 
 			// Печатаю сообщение об успешном сохранении данных
-			go func() {
-				app.App.QueueUpdateDraw(func() {
-					printer.Message(app, "data saved successfully")
-				})
-			}()
+			printer.Message(app, "data saved successfully")
 
 			// перенаправляю пользователя на страницу данных
 			app.SwitchTo(tui.Data)

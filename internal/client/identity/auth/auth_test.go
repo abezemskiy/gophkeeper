@@ -148,7 +148,7 @@ func TestOnBeforeMiddleware(t *testing.T) {
 func TestOnAfterMiddleware(t *testing.T) {
 	// Хэндлер для имитации ответа сервера, что клиент не авторизирован
 	testHandler := func() http.HandlerFunc {
-		return func(res http.ResponseWriter, req *http.Request) {
+		return func(res http.ResponseWriter, _ *http.Request) {
 			// устанавливаю нужный статус в ответ
 			res.WriteHeader(http.StatusUnauthorized)
 		}
@@ -159,7 +159,7 @@ func TestOnAfterMiddleware(t *testing.T) {
 		return func(res http.ResponseWriter, req *http.Request) {
 			if status == http.StatusOK {
 				// Извлекаю логин и хэш из запроса пользователя на авторизацию
-				var regData repoIdent.IdentityData
+				var regData repoIdent.Data
 				err := json.NewDecoder(req.Body).Decode(&regData)
 				require.NoError(t, err)
 
@@ -241,7 +241,7 @@ func TestOnAfterMiddleware(t *testing.T) {
 	type request struct {
 		info              identity.IUserInfoStorage
 		ident             identity.ClientIdentifier
-		correctUrlForAuth bool
+		correctURLForAuth bool
 	}
 	type want struct {
 		err    bool
@@ -260,7 +260,7 @@ func TestOnAfterMiddleware(t *testing.T) {
 			req: request{
 				info:              successInfo,
 				ident:             ident,
-				correctUrlForAuth: true,
+				correctURLForAuth: true,
 			},
 			want: want{
 				err:    false,
@@ -275,7 +275,7 @@ func TestOnAfterMiddleware(t *testing.T) {
 			req: request{
 				info:              wrongAuthURLInfo,
 				ident:             ident,
-				correctUrlForAuth: false,
+				correctURLForAuth: false,
 			},
 			want: want{
 				err:    true,
@@ -290,7 +290,7 @@ func TestOnAfterMiddleware(t *testing.T) {
 			req: request{
 				info:              status500Info,
 				ident:             ident,
-				correctUrlForAuth: true,
+				correctURLForAuth: true,
 			},
 			want: want{
 				err:    false,
@@ -305,7 +305,7 @@ func TestOnAfterMiddleware(t *testing.T) {
 			req: request{
 				info:              errorInfo,
 				ident:             ident,
-				correctUrlForAuth: true,
+				correctURLForAuth: true,
 			},
 			want: want{
 				err:    true,
@@ -320,7 +320,7 @@ func TestOnAfterMiddleware(t *testing.T) {
 			req: request{
 				info:              notRegisterInfo,
 				ident:             ident,
-				correctUrlForAuth: true,
+				correctURLForAuth: true,
 			},
 			want: want{
 				err:    true,
@@ -346,7 +346,7 @@ func TestOnAfterMiddleware(t *testing.T) {
 
 			// Создаю url для доступа к аутентификации на сервере
 			var authURL string
-			if tt.req.correctUrlForAuth {
+			if tt.req.correctURLForAuth {
 				authURL = ts.URL + "/auth"
 			} else {
 				authURL = "http://worg.server.address"

@@ -17,6 +17,9 @@ func TestGetTokenFromHeader(t *testing.T) {
 		// Тест с успешныыи извлечение заголовка
 		r := httptest.NewRequest("POST", "/header", nil)
 		id := "254735724613466"
+		// Устанавливаю время жизни токена
+		token.SerExpireHour(1)
+
 		tokenBuild, err := token.BuildJWT(id)
 		require.NoError(t, err)
 
@@ -33,6 +36,9 @@ func TestGetTokenFromHeader(t *testing.T) {
 		// Тест с неправильным ключом заголовка
 		r := httptest.NewRequest("POST", "/header", nil)
 		id := "254735724613466"
+		// Устанавливаю время жизни токена
+		token.SerExpireHour(1)
+
 		tokenBuild, err := token.BuildJWT(id)
 		require.NoError(t, err)
 
@@ -45,6 +51,9 @@ func TestGetTokenFromHeader(t *testing.T) {
 		// Тест с неправильным форматом заголовка
 		r := httptest.NewRequest("POST", "/header", nil)
 		id := "254735724613466"
+		// Устанавливаю время жизни токена
+		token.SerExpireHour(1)
+
 		tokenBuild, err := token.BuildJWT(id)
 		require.NoError(t, err)
 
@@ -57,7 +66,7 @@ func TestGetTokenFromHeader(t *testing.T) {
 
 func TestGetTokenFromResponseHeader(t *testing.T) {
 	testHandler := func(id, key, format string) http.HandlerFunc {
-		return func(res http.ResponseWriter, req *http.Request) {
+		return func(res http.ResponseWriter, _ *http.Request) {
 			// генерирую токен
 			token, err := token.BuildJWT(id)
 			require.NoError(t, err)
@@ -116,6 +125,9 @@ func TestGetTokenFromResponseHeader(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Устанавливаю время жизни токена
+			token.SerExpireHour(1)
+
 			r := chi.NewRouter()
 			r.Post("/header", testHandler(tt.req.id, tt.req.key, tt.req.format))
 
@@ -145,7 +157,7 @@ func TestGetTokenFromResponseHeader(t *testing.T) {
 
 func TestGetTokenFromRestyResponseHeader(t *testing.T) {
 	testHandler := func(id, key, format string) http.HandlerFunc {
-		return func(res http.ResponseWriter, req *http.Request) {
+		return func(res http.ResponseWriter, _ *http.Request) {
 			// генерирую токен
 			token, err := token.BuildJWT(id)
 			require.NoError(t, err)
@@ -204,6 +216,9 @@ func TestGetTokenFromRestyResponseHeader(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Устанавливаю время жизни токена
+			token.SerExpireHour(1)
+
 			r := chi.NewRouter()
 			r.Post("/header", testHandler(tt.req.id, tt.req.key, tt.req.format))
 

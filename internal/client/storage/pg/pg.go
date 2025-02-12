@@ -131,9 +131,8 @@ func (s Store) Register(ctx context.Context, login, hash, id, token string) (boo
 			// Ошибка соответствует ошибке при попытке установить повторяющеся поле типа "PRIMARY KEY".
 			// Пользователь уже зарегистрирован.
 			return false, nil
-		} else {
-			return false, fmt.Errorf("query execution error, %w", err)
 		}
+		return false, fmt.Errorf("query execution error, %w", err)
 	}
 
 	// Пользователь успешно зарегистрирован
@@ -197,7 +196,7 @@ func (s Store) AddEncryptedData(ctx context.Context, idUser string, userData dat
 // ReplaceEncryptedData - метод для замены старых данных значениями новых.
 // В случае попытки заменить данные, когда данные с текущим id полязователя и именем ещё не загружены в хранилище
 // возвращается false.
-func (s Store) ReplaceEncryptedData(ctx context.Context, idUser string, userData data.EncryptedData, status int) (bool, error) {
+func (s Store) ReplaceEncryptedData(ctx context.Context, idUser string, userData data.EncryptedData, _ int) (bool, error) {
 	query := `
 	UPDATE user_data
 	SET encrypted_data = $3, status = $4
@@ -407,7 +406,7 @@ func (s Store) ChangeStatusOfEncryptedData(ctx context.Context, userID, dataName
 func (s Store) ReplaceDataWithMultiVersionData(ctx context.Context, idUser string, userData []data.EncryptedData,
 	status int) (bool, error) {
 	// проверяю, что существует как минимум одна версия данных
-	if len(userData) < 1 {
+	if len(userData) == 0 {
 		return false, fmt.Errorf("no one version of data is exists")
 	}
 

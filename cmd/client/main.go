@@ -204,27 +204,27 @@ func createTUI(ctx context.Context, stor storage.IEncryptedClientStorage, ident 
 	// Добавляю страницу регистрации
 	prims = append(prims, app.Primitives{
 		Name: tui.Register,
-		Prim: register.RegisterPage(ctx, ident, netAddr+registerPattern, client),
+		Prim: register.Page(ctx, ident, netAddr+registerPattern, client),
 	})
 	// Добавляю страницу авторизации
 	prims = append(prims, app.Primitives{
 		Name: tui.Login,
-		Prim: authorize.LoginPage(ctx, ident, info),
+		Prim: authorize.Page(ctx, ident, info),
 	})
 	// Добавляю страницу для взаимодействия с данными
 	prims = append(prims, app.Primitives{
 		Name: tui.Data,
-		Prim: data.DataPage,
+		Prim: data.Page,
 	})
 	// Добавляю страницу для визуализации данных
 	prims = append(prims, app.Primitives{
 		Name: tui.View,
-		Prim: view.ViewPage(ctx, decrData),
+		Prim: view.Page(ctx, decrData),
 	})
 	// Добавляю страницу для добавления новых данных
 	prims = append(prims, app.Primitives{
 		Name: tui.Add,
-		Prim: add.AddData,
+		Prim: add.Data,
 	})
 	// Добавляю страницу для добавления новой банковской карты
 	prims = append(prims, app.Primitives{
@@ -249,7 +249,7 @@ func createTUI(ctx context.Context, stor storage.IEncryptedClientStorage, ident 
 	// Добавляю приветственную страницу
 	prims = append(prims, app.Primitives{
 		Name: tui.Home,
-		Prim: home.HomePage,
+		Prim: home.Page,
 	})
 
 	return app.NewApp(prims)

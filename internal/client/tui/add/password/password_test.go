@@ -85,7 +85,7 @@ func TestAddPasswordPage(t *testing.T) {
 func TestSave(t *testing.T) {
 	// вспомогательная функция
 	testHandler := func(status int) http.HandlerFunc {
-		return func(res http.ResponseWriter, req *http.Request) {
+		return func(res http.ResponseWriter, _ *http.Request) {
 			// устанавливаю нужный статус в ответ
 			res.WriteHeader(status)
 		}

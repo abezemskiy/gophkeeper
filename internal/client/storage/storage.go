@@ -7,6 +7,7 @@ import (
 	repoStorage "gophkeeper/internal/repositories/storage"
 )
 
+// Описание интерфейса для постоянно хранилища зашифрованных данных клиента.
 type (
 	// EncryptedDataGetterByStatus - интерфейс для получения всех данных пользователя с нужным статусом.
 	EncryptedDataGetterByStatus interface {
@@ -23,6 +24,7 @@ type (
 	}
 )
 
+// Описание интерфейса для временного хранилища расшифрованных данных клиента.
 type (
 	// DataWriter - интерфейс для добавления данных во временное хранилище.
 	DataWriter interface {

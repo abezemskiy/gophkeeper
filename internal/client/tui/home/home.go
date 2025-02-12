@@ -7,8 +7,8 @@ import (
 	"github.com/rivo/tview"
 )
 
-// HomePage - приветственное окно для входа в приложение.
-func HomePage(app *app.App) tview.Primitive {
+// Page - приветственное окно для входа в приложение.
+func Page(app *app.App) tview.Primitive {
 	list := tview.NewList().
 		AddItem("Регистрация", "", 'a', func() { app.SwitchTo(tui.Register) }).
 		AddItem("Авторизация", "", 'q', func() { app.SwitchTo(tui.Login) })

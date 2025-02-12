@@ -8,8 +8,8 @@ type Identifier interface {
 	Authorize(ctx context.Context, login string) (data AuthorizationData, ok bool, err error) // Метод для авторизации пользователя.
 }
 
-// IdentityData - структура данных для аутентификации пользователя.
-type IdentityData struct {
+// Data - структура данных для аутентификации пользователя.
+type Data struct {
 	Login string `json:"login"` // логин пользователя
 	Hash  string `json:"hash"`  //  хэш от суммы логин+пароль
 }

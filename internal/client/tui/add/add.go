@@ -7,11 +7,11 @@ import (
 	"github.com/rivo/tview"
 )
 
-// AddData позволяет выбрать тип данных для добавления.
-func AddData(app *app.App) tview.Primitive {
+// Data позволяет выбрать тип данных для добавления.
+func Data(app *app.App) tview.Primitive {
 	form := tview.NewForm()
 
-	form.AddDropDown("Тип данных", []string{"PASSWORD", "TEXT", "BINARY", "BANKCARD"}, 0, func(option string, index int) {
+	form.AddDropDown("Тип данных", []string{"PASSWORD", "TEXT", "BINARY", "BANKCARD"}, 0, func(option string, _ int) {
 		switch option {
 		case "PASSWORD":
 			app.SwitchTo(tui.AddPassword)

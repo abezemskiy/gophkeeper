@@ -15,7 +15,7 @@ import (
 var updatingPeriod int
 
 // SetUpdatingPeriod - функция для установки периода обновления расшифрованных данных пользователя во временном хранилище.
-func SetUpdatingPeriod(sec int){
+func SetUpdatingPeriod(sec int) {
 	updatingPeriod = sec
 }
 

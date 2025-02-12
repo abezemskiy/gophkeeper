@@ -3,9 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"gophkeeper/internal/common/identity/tools/token"
 	"gophkeeper/internal/server/config"
 	"log"
 	"os"
+	"strconv"
 )
 
 var (
@@ -13,6 +15,8 @@ var (
 	databaseDsn string // адрес базы данных
 	logLevel    string // уровень логирования
 	configFile  string // путь к файлу конфигурации
+	secretKey   string // секретный ключ для создания JWT
+	expireToken int    // время действия JWT
 )
 
 // parseVariables - функция для установки конфигурационных параметров приложения.
@@ -21,7 +25,17 @@ func parseVariables() error {
 	parseFlags()
 	parseConfigFile()
 	parseEnvironment()
-	return checkVariables()
+
+	// Проверяю корректность установки глобальных переменных
+	err := checkVariables()
+	if err != nil {
+		return fmt.Errorf("failed to set global variable, %w", err)
+	}
+
+	// Устанавливаю полученные значения глобальных переменных
+	token.SetSecretKey(secretKey)
+	token.SerExpireHour(expireToken)
+	return nil
 }
 
 // parseFlags - функция для определения параметров конфигурации из флагов.
@@ -33,9 +47,12 @@ func parseFlags() {
 
 	flag.StringVar(&logLevel, "l", "", "log level")
 	flag.StringVar(&configFile, "c", "", "name of configuration file")
+	flag.StringVar(&secretKey, "secret-key", "", "secret key for generating JWT")
+	flagExpireToken := flag.Int("expire-token", 0, "JWT expiration date in hours")
 
 	// Вызов flag.Parse() для парсинга аргументов
 	flag.Parse()
+	expireToken = *flagExpireToken
 }
 
 // parseConfigFile - функция для переопределения параметров конфигурации из файла конфигурации.
@@ -59,6 +76,12 @@ func parseConfigFile() {
 	if databaseDsn == "" {
 		databaseDsn = configs.DatabaseDSN
 	}
+	if secretKey == "" {
+		secretKey = configs.SecretKey
+	}
+	if expireToken == 0 {
+		expireToken = configs.ExpireToken
+	}
 }
 
 // parceEnvironment - функция для переопределения конфигурации из глобальных переменных.
@@ -73,6 +96,18 @@ func parseEnvironment() {
 	if logLevel == "" {
 		logLevel = os.Getenv("GOPHKEEPER_SERVER_LOG_LEVEL")
 	}
+	if secretKey == "" {
+		secretKey = os.Getenv("GOPHKEEPER_SERVER_SECRET_KEY")
+	}
+	if expireToken == 0 {
+		envExpireToken := os.Getenv("GOPHKEEPER_SERVER_EXPIRE_TOKEN")
+		if envExpireToken != "" {
+			expire, err := strconv.Atoi(envExpireToken)
+			if err == nil {
+				expireToken = expire
+			}
+		}
+	}
 }
 
 // checkVariables - функция для проверки корректности утсановки глобальных переменных.
@@ -85,6 +120,12 @@ func checkVariables() error {
 	}
 	if databaseDsn == "" {
 		return fmt.Errorf("database connection address must be set")
+	}
+	if secretKey == "" {
+		return fmt.Errorf("secret key must be set")
+	}
+	if expireToken == 0 {
+		return fmt.Errorf("expire token must be set")
 	}
 	return nil
 }

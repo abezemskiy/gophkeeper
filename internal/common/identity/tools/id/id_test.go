@@ -8,10 +8,10 @@ import (
 )
 
 func TestGenerateId(t *testing.T) {
-	id1, err := GenerateId()
+	id1, err := GenerateID()
 	require.NoError(t, err)
 
-	id2, err := GenerateId()
+	id2, err := GenerateID()
 	require.NoError(t, err)
 	assert.NotEqual(t, id1, id2)
 }

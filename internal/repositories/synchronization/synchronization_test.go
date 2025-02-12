@@ -8,5 +8,5 @@ import (
 
 func TestGetPeroidOfSynchr(t *testing.T) {
 	getPeriod := GetPeroidOfSynchr()
-	assert.Equal(t,PeroidOfSynchr, getPeriod)
+	assert.Equal(t, PeroidOfSynchr, getPeriod)
 }

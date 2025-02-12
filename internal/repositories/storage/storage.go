@@ -5,6 +5,7 @@ import (
 	"gophkeeper/internal/repositories/data"
 )
 
+// Интерфейсы для хранения данных пользователей.
 type (
 	// EncryptedDataWriter - интерфейс для добавления зашифрованных данных хранилище.
 	EncryptedDataWriter interface {

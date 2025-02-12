@@ -14,8 +14,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// LoginPage - страница авторизации пользователя.
-func LoginPage(ctx context.Context, ident identity.ClientIdentifier, info identity.IUserInfoStorage) func(app *app.App) tview.Primitive {
+// Page - страница авторизации пользователя.
+func Page(ctx context.Context, ident identity.ClientIdentifier, info identity.IUserInfoStorage) func(app *app.App) tview.Primitive {
 	return func(app *app.App) tview.Primitive {
 		form := tview.NewForm()
 		authData := &identity.AuthData{}

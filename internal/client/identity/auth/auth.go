@@ -13,7 +13,7 @@ import (
 
 // OnBeforeMiddleware - мидлварь для установки аутентификационных пользователя перед отправкой запроса на сервер.
 func OnBeforeMiddleware(info identity.IUserInfoStorage, ident identity.ClientIdentifier) resty.RequestMiddleware {
-	return func(c *resty.Client, req *resty.Request) error {
+	return func(_ *resty.Client, req *resty.Request) error {
 		// Извлекаю идентификационные данные текущего пользователя
 		authData, _ := info.Get()
 
@@ -55,7 +55,7 @@ func OnAfterMiddleware(info identity.IUserInfoStorage, ident identity.ClientIden
 			// Отправляю запрос на авторизацию пользователя на сервере
 			resp, err := c.R().
 				SetHeader("Content-Type", "application/json").
-				SetBody(repoIdent.IdentityData{
+				SetBody(repoIdent.Data{
 					Login: authData.Login,
 					Hash:  hash,
 				}).

@@ -6,6 +6,7 @@ import (
 	repoStorage "gophkeeper/internal/repositories/storage"
 )
 
+// Интерфейсы для хранения зашифрованных данных пользователей на сервере.
 type (
 	// EncryptedDataAppender - интерфейс для сохранения дополнительной версии существующих данных в случае конфликта.
 	EncryptedDataAppender interface {

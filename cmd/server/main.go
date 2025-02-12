@@ -92,6 +92,7 @@ func run(ctx context.Context, stor *pg.Store) {
 	logger.ServerLog.Info("Shutdown the server gracefully", zap.String("address", netAddr))
 }
 
+// MetricRouter - дирежирует обработку http запросов к серверу.
 func MetricRouter(stor *pg.Store) chi.Router {
 	r := chi.NewRouter()
 

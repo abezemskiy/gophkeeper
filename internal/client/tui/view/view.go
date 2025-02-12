@@ -3,6 +3,7 @@ package view
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"gophkeeper/internal/client/storage"
 	"gophkeeper/internal/client/storage/data"
@@ -15,8 +16,8 @@ import (
 	"github.com/rivo/tview"
 )
 
-// ViewPage - страница отображения данных пользователя.
-func ViewPage(ctx context.Context, decrData storage.IStorage) func(app *app.App) tview.Primitive {
+// Page - страница отображения данных пользователя.
+func Page(_ context.Context, decrData storage.IStorage) func(app *app.App) tview.Primitive {
 	return func(app *app.App) tview.Primitive {
 		// Создаю элементы интерфейса
 		list := tview.NewList()
@@ -45,7 +46,10 @@ func ViewPage(ctx context.Context, decrData storage.IStorage) func(app *app.App)
 				if len(versions) > 0 {
 					name := versions[0].Name
 					list.AddItem(name, "", rune('a'+i), func() {
-						updateTable(table, versions)
+						err := updateTable(table, versions)
+						if err != nil {
+							printer.Message(app, fmt.Errorf("failed to update table, %w", err).Error())
+						}
 					})
 				}
 			}
@@ -105,7 +109,7 @@ func ViewPage(ctx context.Context, decrData storage.IStorage) func(app *app.App)
 }
 
 // updateTable - функция для обновления таблицы с версиями данных.
-func updateTable(table *tview.Table, versions []repoData.Data) {
+func updateTable(table *tview.Table, versions []repoData.Data) error {
 	table.Clear()
 	table.SetCell(0, 0, tview.NewTableCell("Версия").SetSelectable(false).SetAlign(tview.AlignCenter).SetTextColor(tcell.ColorYellow))
 	table.SetCell(0, 1, tview.NewTableCell("Данные").SetSelectable(false).SetAlign(tview.AlignCenter).SetTextColor(tcell.ColorYellow))
@@ -114,35 +118,51 @@ func updateTable(table *tview.Table, versions []repoData.Data) {
 	table.SetCell(0, 4, tview.NewTableCell("Изменено").SetSelectable(false).SetAlign(tview.AlignCenter).SetTextColor(tcell.ColorYellow))
 
 	for i, v := range versions {
-		dataString := parseData(v)
+		dataString, err := parseData(v)
+		if err != nil {
+			return fmt.Errorf("failed to parse data, %w", err)
+		}
 		table.SetCell(i+1, 0, tview.NewTableCell(fmt.Sprintf("v%d", i+1)).SetSelectable(true))
 		table.SetCell(i+1, 1, tview.NewTableCell(dataString).SetSelectable(true))
 		table.SetCell(i+1, 2, tview.NewTableCell(v.Metainfo).SetSelectable(true))
 		table.SetCell(i+1, 3, tview.NewTableCell(v.CreateDate.Format("02.01.2006 15:04:05")).SetSelectable(true))
 		table.SetCell(i+1, 4, tview.NewTableCell(v.EditDate.Format("02.01.2006 15:04:05")).SetSelectable(true))
 	}
+	return nil
 }
 
 // parseData - функция для парсинга данных по типу.
-func parseData(d repoData.Data) string {
+func parseData(d repoData.Data) (string, error) {
 	switch d.Type {
 	case repoData.PASSWORD:
 		var p data.Password
-		json.Unmarshal(d.Data, &p)
-		return fmt.Sprintf("Login: %s, Password: %s", p.Login, p.Password)
+		err := json.Unmarshal(d.Data, &p)
+		if err != nil {
+			return "", fmt.Errorf("failed to unmarshal data, %w", err)
+		}
+		return fmt.Sprintf("Login: %s, Password: %s", p.Login, p.Password), nil
 	case repoData.TEXT:
 		var t data.Text
-		json.Unmarshal(d.Data, &t)
-		return t.Text
+		err := json.Unmarshal(d.Data, &t)
+		if err != nil {
+			return "", fmt.Errorf("failed to unmarshal data, %w", err)
+		}
+		return t.Text, nil
 	case repoData.BINARY:
 		var b data.Binary
-		json.Unmarshal(d.Data, &b)
-		return fmt.Sprintf("Binary (%s)", b.Type)
+		err := json.Unmarshal(d.Data, &b)
+		if err != nil {
+			return "", fmt.Errorf("failed to unmarshal data, %w", err)
+		}
+		return fmt.Sprintf("Binary (%s)", b.Type), nil
 	case repoData.BANKCARD:
 		var b data.Bank
-		json.Unmarshal(d.Data, &b)
-		return fmt.Sprintf("Card: %d, Owner: %s", b.Number, b.Owner)
+		err := json.Unmarshal(d.Data, &b)
+		if err != nil {
+			return "", fmt.Errorf("failed to unmarshal data, %w", err)
+		}
+		return fmt.Sprintf("Card: %d, Owner: %s", b.Number, b.Owner), nil
 	default:
-		return "Unknown data type"
+		return "", errors.New("unknown data type")
 	}
 }

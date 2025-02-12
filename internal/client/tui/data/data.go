@@ -7,8 +7,8 @@ import (
 	"github.com/rivo/tview"
 )
 
-// DataPage создаёт экран с данными пользователя.
-func DataPage(app *app.App) tview.Primitive {
+// Page создаёт экран с данными пользователя.
+func Page(app *app.App) tview.Primitive {
 	list := tview.NewList().
 		AddItem("Добавить данные", "", 'a', func() { app.SwitchTo(tui.Add) }).
 		AddItem("Посмотреть данные", "", 'a', func() { app.SwitchTo(tui.View) }).

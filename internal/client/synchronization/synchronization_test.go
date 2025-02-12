@@ -514,7 +514,7 @@ func TestSynchronizeChangedLocalData(t *testing.T) {
 func TestSynchronizeDataFromServer(t *testing.T) {
 	// Хэндлер для тестовой обработки запроса клиента на авторизацию на сервере
 	testHandler := func(status int, serverData [][]data.EncryptedData) http.HandlerFunc {
-		return func(res http.ResponseWriter, req *http.Request) {
+		return func(res http.ResponseWriter, _ *http.Request) {
 			if status == http.StatusOK {
 				// Устанавливаю ответ сервера
 				err := json.NewEncoder(res).Encode(serverData)

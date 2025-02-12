@@ -24,7 +24,7 @@ func Register(res http.ResponseWriter, req *http.Request, ident identity.Identif
 	res.Header().Set("Content-Type", "text/plain")
 	defer req.Body.Close()
 
-	var regData identity.IdentityData
+	var regData identity.Data
 	if err := json.NewDecoder(req.Body).Decode(&regData); err != nil {
 		logger.ServerLog.Error("failed to parse identity data to structer", zap.String("address", req.URL.String()), zap.String("error", error.Error(err)))
 		http.Error(res, fmt.Errorf("failed to parse identity data to structer, %w", err).Error(), http.StatusBadRequest)
@@ -45,7 +45,7 @@ func Register(res http.ResponseWriter, req *http.Request, ident identity.Identif
 	}
 
 	// вычисляю идентификатор пользователя
-	id, err := id.GenerateId()
+	id, err := id.GenerateID()
 	if err != nil {
 		logger.ServerLog.Error("failed to generate id", zap.String("address", req.URL.String()), zap.String("error", error.Error(err)))
 		http.Error(res, fmt.Errorf("failed to generate id, %w", err).Error(), http.StatusInternalServerError)
@@ -80,6 +80,7 @@ func Register(res http.ResponseWriter, req *http.Request, ident identity.Identif
 	res.WriteHeader(200)
 }
 
+// RegisterHandler - обертка на функцией Register.
 func RegisterHandler(ident identity.Identifier) http.HandlerFunc {
 	fn := func(res http.ResponseWriter, req *http.Request) {
 		Register(res, req, ident)
@@ -94,7 +95,7 @@ func Authorize(res http.ResponseWriter, req *http.Request, ident identity.Identi
 	res.Header()
 	defer req.Body.Close()
 
-	var regData identity.IdentityData
+	var regData identity.Data
 	if err := json.NewDecoder(req.Body).Decode(&regData); err != nil {
 		logger.ServerLog.Error("failed to parse identity data to structer", zap.String("address", req.URL.String()), zap.String("error", error.Error(err)))
 		http.Error(res, fmt.Errorf("failed to parse identity data to structer, %w", err).Error(), http.StatusBadRequest)

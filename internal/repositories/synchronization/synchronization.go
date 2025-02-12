@@ -7,6 +7,6 @@ import "time"
 const PeroidOfSynchr = time.Minute * 10
 
 // GetPeroidOfSynchr - функция для получения периода синхронизации данных между сервером и клиентом.
-func GetPeroidOfSynchr() time.Duration{
+func GetPeroidOfSynchr() time.Duration {
 	return PeroidOfSynchr
 }

@@ -36,7 +36,7 @@ type dataInfo struct {
 // AddBinaryPage - TUI страница добавления нового файла.
 func AddBinaryPage(ctx context.Context, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
 	info identity.IUserInfoStorage) func(app *app.App) tview.Primitive {
-		
+
 	return func(app *app.App) tview.Primitive {
 		form := tview.NewForm()
 		// структура для введенной пары логин пароль

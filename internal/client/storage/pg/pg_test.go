@@ -106,9 +106,9 @@ func TestAuthorize(t *testing.T) {
 		// регистрирую пользователя
 		sLogin := "login"
 		sHash := "hash"
-		sId := "id"
+		sID := "id"
 		token := "token"
-		ok, err := stor.Register(ctx, sLogin, sHash, sId, token)
+		ok, err := stor.Register(ctx, sLogin, sHash, sID, token)
 		require.NoError(t, err)
 		assert.Equal(t, true, ok)
 
@@ -117,7 +117,7 @@ func TestAuthorize(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, sHash, data.Hash)
-		assert.Equal(t, sId, data.ID)
+		assert.Equal(t, sID, data.ID)
 		assert.Equal(t, token, data.Token)
 	}
 	{
@@ -125,9 +125,9 @@ func TestAuthorize(t *testing.T) {
 		// регистрирую пользователя
 		sLogin := "exceeded login"
 		sHash := "hash"
-		sId := "id"
+		sID := "id"
 		token := "token"
-		ok, err := stor.Register(ctx, sLogin, sHash, sId, token)
+		ok, err := stor.Register(ctx, sLogin, sHash, sID, token)
 		require.NoError(t, err)
 		assert.Equal(t, true, ok)
 
@@ -660,9 +660,9 @@ func TestSetToken(t *testing.T) {
 		// регистрирую пользователя
 		sLogin := "login"
 		sHash := "hash"
-		sId := "id"
+		sID := "id"
 		token := "token"
-		ok, err := stor.Register(ctx, sLogin, sHash, sId, token)
+		ok, err := stor.Register(ctx, sLogin, sHash, sID, token)
 		require.NoError(t, err)
 		assert.Equal(t, true, ok)
 
@@ -671,7 +671,7 @@ func TestSetToken(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, sHash, data.Hash)
-		assert.Equal(t, sId, data.ID)
+		assert.Equal(t, sID, data.ID)
 		assert.Equal(t, token, data.Token)
 
 		// меняю токен пользователя

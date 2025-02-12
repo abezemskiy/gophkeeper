@@ -69,7 +69,7 @@ func TestSaveEncryptedDataToLocalStorage(t *testing.T) {
 func TestSaveEncryptedData(t *testing.T) {
 	// вспомогательная функция
 	testHandler := func(status int) http.HandlerFunc {
-		return func(res http.ResponseWriter, req *http.Request) {
+		return func(res http.ResponseWriter, _ *http.Request) {
 			// устанавливаю нужный статус в ответ
 			res.WriteHeader(status)
 		}
@@ -210,7 +210,7 @@ func TestSaveEncryptedData(t *testing.T) {
 func TestRegister(t *testing.T) {
 	// Вспомогательная функция---------------------------------------
 	testHandler := func(status int, token string) http.HandlerFunc {
-		return func(res http.ResponseWriter, req *http.Request) {
+		return func(res http.ResponseWriter, _ *http.Request) {
 
 			// Если ожидается успешный запрос, то устанавливаю токен в заголовок
 			if status == http.StatusOK {

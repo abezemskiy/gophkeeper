@@ -1,5 +1,6 @@
 {
     "address": "localhost:8085",
     "log_level": "info",
-    "database_dsn": ""
+    "database_dsn": "",
+    "expire_token": 24
 }

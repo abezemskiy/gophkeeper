@@ -14,6 +14,7 @@ import (
 
 type contextKey string
 
+// UserIDKey - ключ для установки ID пользователя в контекст.
 const UserIDKey = contextKey("userID")
 
 // Middleware - проверяет JWT входящих запросов к серверу.

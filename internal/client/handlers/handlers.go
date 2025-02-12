@@ -19,6 +19,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// SaveEncryptedDataToLocalStorage - функция для сохранения данных в локальном хранилище.
 func SaveEncryptedDataToLocalStorage(ctx context.Context, userID string, stor storage.IEncryptedClientStorage,
 	encrData data.EncryptedData, status int) (bool, error) {
 
@@ -122,7 +123,7 @@ func Register(ctx context.Context, url string, authData *identity.AuthData, clie
 	}
 
 	// Создаю тело запроса
-	regData := repoIdent.IdentityData{
+	regData := repoIdent.Data{
 		Login: authData.Login,
 		Hash:  hash,
 	}
@@ -155,7 +156,7 @@ func Register(ctx context.Context, url string, authData *identity.AuthData, clie
 	logger.ClientLog.Debug("successful register new user on server")
 
 	// вычисляю уникальный идентификатор пользователя. Идентификатора пользователя отличаются на сервере и в локальном хранилище.
-	id, err := id.GenerateId()
+	id, err := id.GenerateID()
 	if err != nil {
 		logger.ClientLog.Error("failed to generate id", zap.String("error", error.Error(err)))
 		return false, fmt.Errorf("failed to generate id, %w", err)

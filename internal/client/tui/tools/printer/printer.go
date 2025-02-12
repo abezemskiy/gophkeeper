@@ -13,7 +13,7 @@ func Error(app *app.App, message string) {
 			modal := tview.NewModal().
 				SetText("Ошибка: " + message).
 				AddButtons([]string{"OK"}).
-				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+				SetDoneFunc(func(_ int, _ string) {
 					app.Pages.RemovePage("error")
 				})
 			app.Pages.AddPage("error", modal, true, true)
@@ -28,7 +28,7 @@ func Message(app *app.App, message string) {
 			modal := tview.NewModal().
 				SetText("Сообщение: " + message).
 				AddButtons([]string{"OK"}).
-				SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+				SetDoneFunc(func(_ int, _ string) {
 					app.Pages.RemovePage("message")
 				})
 			app.Pages.AddPage("message", modal, true, true)

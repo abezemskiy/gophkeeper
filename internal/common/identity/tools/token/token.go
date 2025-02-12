@@ -16,7 +16,7 @@ func SetSecretKey(newKey string) {
 }
 
 // expireHour - время действия токена в часах.
-var expireHour int = 24
+var expireHour int
 
 // SerExpireHour - функция, для установки времени действия токена в часах.
 func SerExpireHour(expire int) {

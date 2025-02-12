@@ -114,8 +114,8 @@ func TestAuthorize(t *testing.T) {
 		// регистрирую пользователя
 		sLogin := "login"
 		sHash := "hash"
-		sId := "id"
-		err = stor.Register(ctx, sLogin, sHash, sId)
+		sID := "id"
+		err = stor.Register(ctx, sLogin, sHash, sID)
 		require.NoError(t, err)
 
 		// получаю данные пользователя для авторизации по его логину
@@ -124,15 +124,15 @@ func TestAuthorize(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, true, ok)
 		assert.Equal(t, sHash, data.Hash)
-		assert.Equal(t, sId, data.ID)
+		assert.Equal(t, sID, data.ID)
 	}
 	{
 		// Test. context is exceeded--------------------------------
 		// регистрирую пользователя
 		sLogin := "exceeded login"
 		sHash := "hash"
-		sId := "id"
-		err = stor.Register(ctx, sLogin, sHash, sId)
+		sID := "id"
+		err = stor.Register(ctx, sLogin, sHash, sID)
 		require.NoError(t, err)
 
 		ctxExc, cancel := context.WithCancel(context.Background())

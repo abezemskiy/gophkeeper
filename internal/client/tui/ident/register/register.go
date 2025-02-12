@@ -15,9 +15,9 @@ import (
 	"go.uber.org/zap"
 )
 
-// RegisterPage - страница регистрации пользователя.
+// Page - страница регистрации пользователя.
 // Для успешной регистрации обязательно быть онлайн.
-func RegisterPage(ctx context.Context, ident identity.ClientIdentifier,
+func Page(ctx context.Context, ident identity.ClientIdentifier,
 	url string, client *resty.Client) func(app *app.App) tview.Primitive {
 
 	return func(app *app.App) tview.Primitive {

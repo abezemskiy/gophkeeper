@@ -12,6 +12,8 @@ type Configs struct {
 	Address     string `json:"address"`      // аналог переменной окружения GOPHKEEPER_SERVER_ADDRESS или флага -a
 	LogLevel    string `json:"log_level"`    // аналог переменной окружения GOPHKEEPER_SERVER_LOG_LEVEL или флага -l
 	DatabaseDSN string `json:"database_dsn"` // аналог переменной окружения GOPHKEEPER_SERVER_DATABASE_URL или флага -d
+	SecretKey   string `json:"secret_key"`   // аналог переменной окружения GOPHKEEPER_SERVER_SECRET_KEY или флага -secret_key
+	ExpireToken int    `json:"expire_token"` // аналог переменной окружения GOPHKEEPER_SERVER_EXPIRE_TOKEN или флага -expire-token
 }
 
 // ParseConfigFile - функция для переопределения параметров конфигурации из файла конфигурации.

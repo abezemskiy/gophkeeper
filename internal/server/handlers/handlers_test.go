@@ -32,7 +32,7 @@ func TestRegister(t *testing.T) {
 
 	// Test. success register---------------------------------------------------------
 	testHash := "success hash"
-	regData := identity.IdentityData{
+	regData := identity.Data{
 		Login: "success login",
 		Hash:  testHash,
 	}
@@ -42,7 +42,7 @@ func TestRegister(t *testing.T) {
 	m.EXPECT().Register(gomock.Any(), regData.Login, regData.Hash, gomock.Any()).Return(nil)
 
 	// Test. user already register------------------------------------------------------------
-	alreadyData := identity.IdentityData{
+	alreadyData := identity.Data{
 		Login: "already login",
 		Hash:  "already hash",
 	}
@@ -52,7 +52,7 @@ func TestRegister(t *testing.T) {
 	m.EXPECT().Register(gomock.Any(), alreadyData.Login, alreadyData.Hash, gomock.Any()).Return(&pgconn.PgError{Code: "23505"})
 
 	// Test. register error (internal server error) ------------------------------------------------------------
-	internalData := identity.IdentityData{
+	internalData := identity.Data{
 		Login: "internal login",
 		Hash:  "internal hash",
 	}
@@ -62,7 +62,7 @@ func TestRegister(t *testing.T) {
 	m.EXPECT().Register(gomock.Any(), internalData.Login, internalData.Hash, gomock.Any()).Return(errors.New("some error"))
 
 	// Test. bad login ------------------------------------------------------------------------------------------
-	badloginData := identity.IdentityData{
+	badloginData := identity.Data{
 		Login: "",
 		Hash:  "hash",
 	}
@@ -70,7 +70,7 @@ func TestRegister(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test. bad hash ------------------------------------------------------------------------------------------
-	badpasswordData := identity.IdentityData{
+	badpasswordData := identity.Data{
 		Login: "",
 		Hash:  "hash",
 	}
@@ -176,9 +176,9 @@ func TestRegister(t *testing.T) {
 			if tt.want.status == 200 {
 				getToken, err := header.GetTokenFromResponseHeader(res)
 				require.NoError(t, err)
-				getId, err := token.GetIDFromToken(getToken)
+				getID, err := token.GetIDFromToken(getToken)
 				require.NoError(t, err)
-				assert.NotEqual(t, "", getId)
+				assert.NotEqual(t, "", getID)
 			}
 		})
 	}
@@ -192,7 +192,7 @@ func TestAuthorize(t *testing.T) {
 
 	// Test. success authorization ---------------------------------------------------------
 	testHash := "success hash"
-	authData := identity.IdentityData{
+	authData := identity.Data{
 		Login: "success login",
 		Hash:  testHash,
 	}
@@ -208,7 +208,7 @@ func TestAuthorize(t *testing.T) {
 	m.EXPECT().Authorize(gomock.Any(), authData.Login).Return(wantData, true, nil)
 
 	// Test. authorization error, user not register ---------------------------------------------------------
-	notRegisterData := identity.IdentityData{
+	notRegisterData := identity.Data{
 		Login: "not register login",
 		Hash:  "not register hash",
 	}
@@ -217,7 +217,7 @@ func TestAuthorize(t *testing.T) {
 	m.EXPECT().Authorize(gomock.Any(), notRegisterData.Login).Return(identity.AuthorizationData{}, false, nil)
 
 	// Test. login is invalid ---------------------------------------------------------
-	invalidLoginData := identity.IdentityData{
+	invalidLoginData := identity.Data{
 		Login: "",
 		Hash:  "hash",
 	}
@@ -225,7 +225,7 @@ func TestAuthorize(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test. hash is invalid ---------------------------------------------------------
-	invalidPasswordData := identity.IdentityData{
+	invalidPasswordData := identity.Data{
 		Login: "login",
 		Hash:  "",
 	}
@@ -233,7 +233,7 @@ func TestAuthorize(t *testing.T) {
 	require.NoError(t, err)
 
 	// Test. authorization error, get auth data form storage error ---------------------------------------------------------
-	errorData := identity.IdentityData{
+	errorData := identity.Data{
 		Login: "error login",
 		Hash:  "error hash",
 	}
@@ -242,7 +242,7 @@ func TestAuthorize(t *testing.T) {
 	m.EXPECT().Authorize(gomock.Any(), errorData.Login).Return(identity.AuthorizationData{}, false, errors.New("get data error"))
 
 	// Test. wrong hash ----------------------------------------------------------------------------------------------
-	wrongPaswordData := identity.IdentityData{
+	wrongPaswordData := identity.Data{
 		Login: "wrong password test login",
 		Hash:  "wrong hash test hash",
 	}
@@ -258,7 +258,7 @@ func TestAuthorize(t *testing.T) {
 
 	// Test. wrong login ----------------------------------------------------------------------------------------------
 	wrongHash := "wrong hash test login"
-	wrongHashData := identity.IdentityData{
+	wrongHashData := identity.Data{
 		Login: wrongHash,
 		Hash:  "wrong hash test hash",
 	}
@@ -389,9 +389,9 @@ func TestAuthorize(t *testing.T) {
 			if tt.want.status == 200 {
 				getToken, err := header.GetTokenFromResponseHeader(res)
 				require.NoError(t, err)
-				getId, err := token.GetIDFromToken(getToken)
+				getID, err := token.GetIDFromToken(getToken)
 				require.NoError(t, err)
-				assert.Equal(t, tt.want.id, getId)
+				assert.Equal(t, tt.want.id, getID)
 			}
 		})
 	}

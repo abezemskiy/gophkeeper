@@ -3,7 +3,9 @@ package synchronization
 import (
 	"context"
 	"encoding/json"
+
 	"errors"
+
 	"gophkeeper/internal/client/identity"
 	"gophkeeper/internal/client/storage"
 	"gophkeeper/internal/repositories/data"

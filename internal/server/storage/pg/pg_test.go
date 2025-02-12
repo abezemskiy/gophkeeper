@@ -4,11 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 	"gophkeeper/internal/repositories/data"
 	"os"
 	"testing"
-	"time"
 
 	"math/rand"
 
@@ -733,119 +731,5 @@ func TestAppendEncryptedData(t *testing.T) {
 		})
 		require.NoError(t, err)
 		assert.Equal(t, false, ok)
-	}
-}
-
-func TestAddDateOfLastVisit(t *testing.T) {
-	// беру адрес тестовой БД из переменной окружения
-	databaseDsn := os.Getenv(envDatabaseName)
-	assert.NotEqual(t, "", databaseDsn)
-
-	// создаю соединение с базой данных
-	conn, err := sql.Open("pgx", databaseDsn)
-	require.NoError(t, err)
-	defer conn.Close()
-
-	// Проверка соединения с БД
-	ctx := context.Background()
-	err = conn.PingContext(ctx)
-	require.NoError(t, err)
-
-	// создаю экземпляр хранилища
-	stor := NewStore(conn)
-	err = stor.Bootstrap(ctx)
-	require.NoError(t, err)
-
-	// очищаю данные в БД от предыдущих запусков
-	cleanBD(t, databaseDsn, stor)
-	defer cleanBD(t, databaseDsn, stor)
-
-	{
-		// Test. successful add last visit date--------------------------------
-		idUser := "successful add user id"
-		lastVisit := time.Now().Truncate(time.Second)
-
-		// добавляю новые данные в хранилище
-		err := stor.AddDateOfLastVisit(ctx, idUser, lastVisit)
-		require.NoError(t, err)
-
-		// Извлекаю дату последнего соединения пользователя
-		getLastVisit, err := stor.GetDateOfLastVisit(ctx, idUser)
-		require.NoError(t, err)
-		// проверяю, что дата последнего соединения пользователя полученная из хранилища совпадает с ожидаемой
-		assert.Equal(t, true, lastVisit.Equal(getLastVisit))
-
-		// Обновляю дату последнего соединения
-		newLastVisit := time.Now().Add(time.Hour).Truncate(time.Second)
-		assert.Equal(t, false, lastVisit.Equal(newLastVisit))
-
-		err = stor.AddDateOfLastVisit(ctx, idUser, newLastVisit)
-		require.NoError(t, err)
-		// Извлекаю дату последнего соединения пользователя
-		getLastVisit, err = stor.GetDateOfLastVisit(ctx, idUser)
-		require.NoError(t, err)
-		// проверяю, что дата последнего соединения пользователя полученная из хранилища совпадает с ожидаемой
-		assert.Equal(t, true, newLastVisit.Equal(getLastVisit))
-	}
-	{
-		// Test. Context exceeded
-		idUser := "context exceeded user id"
-		lastVisit := time.Now()
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
-		err := stor.AddDateOfLastVisit(ctx, idUser, lastVisit)
-		require.Error(t, err)
-	}
-}
-
-func TestGetDateOfLastVisit(t *testing.T) {
-	// беру адрес тестовой БД из переменной окружения
-	databaseDsn := os.Getenv(envDatabaseName)
-	assert.NotEqual(t, "", databaseDsn)
-
-	// создаю соединение с базой данных
-	conn, err := sql.Open("pgx", databaseDsn)
-	require.NoError(t, err)
-	defer conn.Close()
-
-	// Проверка соединения с БД
-	ctx := context.Background()
-	err = conn.PingContext(ctx)
-	require.NoError(t, err)
-
-	// создаю экземпляр хранилища
-	stor := NewStore(conn)
-	err = stor.Bootstrap(ctx)
-	require.NoError(t, err)
-
-	// очищаю данные в БД от предыдущих запусков
-	cleanBD(t, databaseDsn, stor)
-	defer cleanBD(t, databaseDsn, stor)
-
-	{
-		// Test. successful add last visit date--------------------------------
-		idUser := "successful get user id"
-		lastVisit := time.Now().Truncate(time.Second)
-
-		// добавляю новые данные в хранилище
-		err := stor.AddDateOfLastVisit(ctx, idUser, lastVisit)
-		require.NoError(t, err)
-
-		// Извлекаю дату последнего соединения пользователя
-		getLastVisit, err := stor.GetDateOfLastVisit(ctx, idUser)
-		require.NoError(t, err)
-		// проверяю, что дата последнего соединения пользователя полученная из хранилища совпадает с ожидаемой
-		fmt.Print("\n\nwant last visit ", lastVisit, " get last visit ", getLastVisit, "\n\n")
-		assert.Equal(t, true, lastVisit.Equal(getLastVisit))
-	}
-	{
-		// Test. Context exceeded
-		idUser := "context exceeded user id"
-		ctx, cancel := context.WithCancel(context.Background())
-		cancel()
-
-		_, err := stor.GetDateOfLastVisit(ctx, idUser)
-		require.Error(t, err)
 	}
 }

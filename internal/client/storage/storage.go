@@ -14,10 +14,16 @@ type (
 		GetEncryptedDataByStatus(ctx context.Context, userID string, status int) ([][]data.EncryptedData, error) // Возвращает зашифрованные данные с указанным статусом.
 	}
 
+	// EncryptedDataStatusChecker - интерфес для проверки статуса данных пользователя по ID и имени данных.
+	EncryptedDataStatusChecker interface {
+		GetStatus(ctx context.Context, userID, dataName string) (status int, ok bool, err error) // Метод для получения текущего статуса данных.
+	}
+
 	// IEncryptedClientStorage - интерфейс клиента для хранения зашифрованных данных.
 	IEncryptedClientStorage interface {
 		repoStorage.IEncryptedStorage
 		EncryptedDataGetterByStatus
+		EncryptedDataStatusChecker
 		ChangeStatusOfEncryptedData(ctx context.Context, userID, dataName string, newStatus int) (ok bool, err error) // Изменяет статус существующих данных.
 
 		ReplaceDataWithMultiVersionData(ctx context.Context, idUser string, data []data.EncryptedData,

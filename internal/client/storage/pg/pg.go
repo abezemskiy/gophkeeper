@@ -442,3 +442,30 @@ func (s Store) ReplaceDataWithMultiVersionData(ctx context.Context, idUser strin
 	}
 	return true, nil
 }
+
+// GetStatus - метод для получения текущего статуса данных у пользователя с данным ID по имени данных.
+// В случае, если данных не существует, возвращается false.
+func (s Store) GetStatus(ctx context.Context, userID, dataName string) (status int, ok bool, err error) {
+	query := `
+	SELECT  status
+	FROM user_data
+	WHERE user_id = $1 AND data_name = $2
+`
+	stmt, err := s.conn.PrepareContext(ctx, query)
+	if err != nil {
+		err = fmt.Errorf("prepare context error, %w", err)
+		return
+	}
+	defer stmt.Close()
+	row := stmt.QueryRowContext(ctx, userID, dataName)
+
+	err = row.Scan(&status)
+	if err != nil {
+		// данные не найдены
+		err = nil
+		ok = false
+		return
+	}
+	ok = true
+	return
+}

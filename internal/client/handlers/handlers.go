@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"gophkeeper/internal/client/encr"
 	"gophkeeper/internal/client/identity"
@@ -291,4 +292,145 @@ func DeleteEncryptedData(ctx context.Context, userID, url, dataName string, clie
 	// Сервер вернул иной статус
 	logger.ClientLog.Error("failed to delete data from server", zap.String("status", strconv.Itoa(resp.StatusCode())), zap.String("data name", dataName))
 	return false, fmt.Errorf("failed to delete data from server with status %d", resp.StatusCode())
+}
+
+// ReplaceEncryptedDataToLocalStorage - функция для замены старых данных новыми в локальном хранилище.
+func ReplaceEncryptedDataToLocalStorage(ctx context.Context, userID string, stor storage.IEncryptedClientStorage,
+	encrData data.EncryptedData, status int) (bool, error) {
+
+	ok, err := stor.ReplaceEncryptedData(ctx, userID, encrData, status)
+	if err != nil {
+		logger.ClientLog.Error("failed to replace encrypted data to storage", zap.String("error", error.Error(err)))
+		return false, fmt.Errorf("failed to replace encrypted data to storage with error, %w", err)
+	}
+	// Данных не существует в локальном хранилище
+	if !ok {
+		logger.ClientLog.Error("failed to replace encrypted data to storage", zap.String("reason", "data is not exist"))
+		return false, nil
+	}
+
+	logger.ClientLog.Debug("successful replace encrypted data in local storage", zap.String("data name", encrData.Name))
+	return true, nil
+}
+
+// OfflineReplaceEncryptedData - функция для замены старых зашифрованных данных новыми когда пользователь в режиме офлайн.
+func OfflineReplaceEncryptedData(ctx context.Context, userID string, stor storage.IEncryptedClientStorage,
+	encrData *data.EncryptedData) (bool, error) {
+
+	// Проверяю статус данных в локальном хранилще
+	status, ok, err := stor.GetStatus(ctx, userID, encrData.Name)
+	if err != nil {
+		return false, fmt.Errorf("failed to get data status from local storage, %w", err)
+	}
+	// данных не существует
+	if !ok {
+		return false, nil
+	}
+	// Данные добавлены офлайн пользователем. Заменяю существующие данными новыми со статусом NEW
+	if status == data.NEW {
+		return ReplaceEncryptedDataToLocalStorage(ctx, userID, stor, *encrData, data.NEW)
+	}
+	// Любой другой статус означает, что данные существуют на сервере, поэтому заменяю данные в хранилище со
+	// статусом CHANGED
+	return ReplaceEncryptedDataToLocalStorage(ctx, userID, stor, *encrData, data.CHANGED)
+}
+
+// ReplaceEncryptedData - функция для замены старых зашифрованных данных новыми. Новые зашифрованные данные сохраняются в локальном хранилище
+// вместо старых и происходит попытка отправки данных на сервер.
+func ReplaceEncryptedData(ctx context.Context, userID, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
+	encrData *data.EncryptedData) (bool, error) {
+
+	// попытка отправить новые данные на сервер
+	resp, err := client.R().
+		SetHeader("Content-Type", "application/json").
+		SetBody(*encrData).
+		Post(url)
+
+	// Не удалось установить соединение сервером или другая ошибка подобного рода.
+	// Заменяю данные в локальном хранилище. Следующая попытка замены данных на сервере будет
+	// осуществлена во время синхронизации данных.
+	if err != nil {
+		logger.ClientLog.Error("push json encrypted to server error", zap.String("error", error.Error(err)))
+
+		// обработка случая, когда пользователь офлайн
+		return OfflineReplaceEncryptedData(ctx, userID, stor, encrData)
+	}
+
+	// Обработка случаю, когда на сервере произошла внутренняя ошибка
+	if resp.StatusCode() == http.StatusInternalServerError {
+		logger.ClientLog.Error("push json encrypted to server error", zap.String("status", fmt.Sprintf("%d", resp.StatusCode())))
+
+		// обработка случая, когда пользователь офлайн
+		return OfflineReplaceEncryptedData(ctx, userID, stor, encrData)
+	}
+
+	// Обработка случая, когда данные не найдены на сервере
+	if resp.StatusCode() == http.StatusNotFound {
+		// Обрабатывается ситуация, когда данных нет на сервер, но они есть в локальном хранилище.
+		// Происходит попытка заменить старые данные на новые со статусом NEW
+		logger.ClientLog.Error("data not exists on server", zap.String("data name", encrData.Name))
+		return ReplaceEncryptedDataToLocalStorage(ctx, userID, stor, *encrData, data.NEW)
+	}
+
+	// Успешная отправка данных на сервер
+	if resp.StatusCode() == http.StatusOK {
+		logger.ClientLog.Debug("successful pushing encrypted data to server", zap.String("data name", encrData.Name))
+
+		// Замена старых данных в локальном хранилище на новые со статусом SAVED
+		ok, err := ReplaceEncryptedDataToLocalStorage(ctx, userID, stor, *encrData, data.SAVED)
+		if err != nil {
+			logger.ClientLog.Error("failed to replace data in local storage after successfully replaced data on server",
+				zap.String("error", error(err).Error()))
+			return false, fmt.Errorf("failed to replace data in local storage after successfully replaced data on server, %w", err)
+		}
+		// данных не существует в локальном хранилище
+		if !ok {
+			// обработка случая, когда данные успешно заменены на сервер, но их нет в локальном хранилище
+			// попытка добавить эти данные в локальное хранилище
+			logger.ClientLog.Error("failed to replace data in local storage after successfully replaced data on server",
+				zap.String("reason", "data does not exists"))
+
+			ok, err := SaveEncryptedDataToLocalStorage(ctx, userID, stor, *encrData, data.SAVED)
+			if err != nil {
+				logger.ClientLog.Debug("failed to save data in local storage", zap.String("error", error(err).Error()))
+				return false, fmt.Errorf("failed to save data in local storage, %w", err)
+			}
+			if !ok {
+				logger.ClientLog.Error("ailed to save data in local storage, data is already exists")
+				return false, errors.New("failed to save data in local storage, data is already exists")
+			}
+			logger.ClientLog.Debug("successful save data in local storage", zap.String("data name", encrData.Name))
+			return true, nil
+		}
+
+		logger.ClientLog.Debug("successful replace data", zap.String("data name", encrData.Name))
+		return true, nil
+	}
+
+	// Сервер вернул иной статус
+	logger.ClientLog.Error("push json encrypted to server error", zap.String("status", fmt.Sprintf("%d", resp.StatusCode())))
+	return false, fmt.Errorf("push json encrypted to server error with status %d", resp.StatusCode())
+}
+
+// ReplaceData - функция для замены существующих данных. Новые данные зашифровываются с помощью мастер пароля, сохраняются в локальном хранилище
+// вместо старых данных и происходит попытка отправки данных на сервер.
+func ReplaceData(ctx context.Context, userID, url, masterPass string, client *resty.Client, stor storage.IEncryptedClientStorage,
+	userData *data.Data) (bool, error) {
+
+	// шифрую данные с помощью мастер пароля пользователя
+	encrData, err := encr.EncryptData(masterPass, userData)
+	if err != nil {
+		logger.ClientLog.Error("failed to encrypt data", zap.String("error", error.Error(err)))
+		return false, fmt.Errorf("failed to encrypt data, %w", err)
+	}
+
+	// Заменяю данные в хранилище
+	ok, err := ReplaceEncryptedData(ctx, userID, url, client, stor, encrData)
+	if err != nil {
+		return false, fmt.Errorf("failed to replace data, %w", err)
+	}
+	if !ok {
+		return false, nil
+	}
+	return true, nil
 }

@@ -886,3 +886,107 @@ func TestReplaceDataWithMultiVersionData(t *testing.T) {
 		assert.Equal(t, false, ok)
 	}
 }
+
+func TestGetStatus(t *testing.T) {
+	// беру адрес тестовой БД из переменной окружения
+	databaseDsn := os.Getenv(envDatabaseName)
+	assert.NotEqual(t, "", databaseDsn)
+
+	// создаю соединение с базой данных
+	conn, err := sql.Open("pgx", databaseDsn)
+	require.NoError(t, err)
+	defer conn.Close()
+
+	// Проверка соединения с БД
+	ctx := context.Background()
+	err = conn.PingContext(ctx)
+	require.NoError(t, err)
+
+	// создаю экземпляр хранилища
+	stor := NewStore(conn)
+	err = stor.Bootstrap(ctx)
+	require.NoError(t, err)
+
+	// очищаю данные в БД от предыдущих запусков
+	cleanBD(t, databaseDsn, stor)
+	defer cleanBD(t, databaseDsn, stor)
+
+	{
+		// С успешным получением статуса данных
+		dataName := "first data"
+		userID := "test user id"
+		wantStatus := data.SAVED
+
+		// добавляю новые данные в хранилище
+		ok, err := stor.AddEncryptedData(ctx, userID, data.EncryptedData{
+			EncryptedData: []byte("some encrypted data initial version"),
+			Name:          dataName,
+		}, wantStatus)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		// Получаю статус данных
+		status, ok, err := stor.GetStatus(ctx, userID, dataName)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+		assert.Equal(t, wantStatus, status)
+	}
+	{
+		// Test. context is exceeded--------------------------------
+		dataName := "context exceded data"
+		userID := "context exceded user id"
+		wantStatus := data.SAVED
+
+		// добавляю новые данные в хранилище
+		ok, err := stor.AddEncryptedData(ctx, userID, data.EncryptedData{
+			EncryptedData: []byte("context exceded some encrypted data"),
+			Name:          dataName,
+		}, wantStatus)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		// попытка получить статус данных, хотя контекст уже отменен.
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		_, _, err = stor.GetStatus(ctx, userID, dataName)
+		require.Error(t, err)
+	}
+	{
+		// Test. error authorization. User not register --------------------------------
+		dataName := "not register data"
+		userID := "not register user id"
+		wantStatus := data.SAVED
+
+		// добавляю новые данные в хранилище
+		ok, err := stor.AddEncryptedData(ctx, userID, data.EncryptedData{
+			EncryptedData: []byte("not register some encrypted data"),
+			Name:          dataName,
+		}, wantStatus)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		// пытаюсь получить статус данных незарегистрированного пользователя
+		_, ok, err = stor.GetStatus(ctx, "wrong user id", dataName)
+		require.NoError(t, err)
+		assert.Equal(t, false, ok)
+	}
+	{
+		// Test. error authorization. Data not exists --------------------------------
+		dataName := "not exists data"
+		userID := "not exists user id"
+		wantStatus := data.SAVED
+
+		// добавляю новые данные в хранилище
+		ok, err := stor.AddEncryptedData(ctx, userID, data.EncryptedData{
+			EncryptedData: []byte("not exists some encrypted data"),
+			Name:          dataName,
+		}, wantStatus)
+		require.NoError(t, err)
+		assert.Equal(t, true, ok)
+
+		// пытаюсь получить статус данных по неверному имени
+		_, ok, err = stor.GetStatus(ctx, userID, "wrong data name")
+		require.NoError(t, err)
+		assert.Equal(t, false, ok)
+	}
+}

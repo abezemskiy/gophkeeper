@@ -124,6 +124,22 @@ func (mr *MockIEncryptedClientStorageMockRecorder) GetEncryptedDataByStatus(arg0
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetEncryptedDataByStatus", reflect.TypeOf((*MockIEncryptedClientStorage)(nil).GetEncryptedDataByStatus), arg0, arg1, arg2)
 }
 
+// GetStatus mocks base method.
+func (m *MockIEncryptedClientStorage) GetStatus(arg0 context.Context, arg1, arg2 string) (int, bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStatus", arg0, arg1, arg2)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(bool)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetStatus indicates an expected call of GetStatus.
+func (mr *MockIEncryptedClientStorageMockRecorder) GetStatus(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStatus", reflect.TypeOf((*MockIEncryptedClientStorage)(nil).GetStatus), arg0, arg1, arg2)
+}
+
 // ReplaceDataWithMultiVersionData mocks base method.
 func (m *MockIEncryptedClientStorage) ReplaceDataWithMultiVersionData(arg0 context.Context, arg1 string, arg2 []data.EncryptedData, arg3 int) (bool, error) {
 	m.ctrl.T.Helper()

@@ -8,7 +8,6 @@ import (
 	context "context"
 	data "gophkeeper/internal/repositories/data"
 	reflect "reflect"
-	time "time"
 
 	gomock "github.com/golang/mock/gomock"
 )
@@ -34,20 +33,6 @@ func NewMockIEncryptedServerStorage(ctrl *gomock.Controller) *MockIEncryptedServ
 // EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockIEncryptedServerStorage) EXPECT() *MockIEncryptedServerStorageMockRecorder {
 	return m.recorder
-}
-
-// AddDateOfLastVisit mocks base method.
-func (m *MockIEncryptedServerStorage) AddDateOfLastVisit(arg0 context.Context, arg1 string, arg2 time.Time) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "AddDateOfLastVisit", arg0, arg1, arg2)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// AddDateOfLastVisit indicates an expected call of AddDateOfLastVisit.
-func (mr *MockIEncryptedServerStorageMockRecorder) AddDateOfLastVisit(arg0, arg1, arg2 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddDateOfLastVisit", reflect.TypeOf((*MockIEncryptedServerStorage)(nil).AddDateOfLastVisit), arg0, arg1, arg2)
 }
 
 // AddEncryptedData mocks base method.
@@ -122,21 +107,6 @@ func (m *MockIEncryptedServerStorage) GetAllEncryptedData(arg0 context.Context, 
 func (mr *MockIEncryptedServerStorageMockRecorder) GetAllEncryptedData(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAllEncryptedData", reflect.TypeOf((*MockIEncryptedServerStorage)(nil).GetAllEncryptedData), arg0, arg1)
-}
-
-// GetDateOfLastVisit mocks base method.
-func (m *MockIEncryptedServerStorage) GetDateOfLastVisit(arg0 context.Context, arg1 string) (time.Time, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetDateOfLastVisit", arg0, arg1)
-	ret0, _ := ret[0].(time.Time)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetDateOfLastVisit indicates an expected call of GetDateOfLastVisit.
-func (mr *MockIEncryptedServerStorageMockRecorder) GetDateOfLastVisit(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetDateOfLastVisit", reflect.TypeOf((*MockIEncryptedServerStorage)(nil).GetDateOfLastVisit), arg0, arg1)
 }
 
 // ReplaceEncryptedData mocks base method.

@@ -1,4 +1,4 @@
-package password
+package text
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"gophkeeper/internal/client/storage"
 	"gophkeeper/internal/client/tui"
 	"gophkeeper/internal/client/tui/app"
-	input "gophkeeper/internal/client/tui/data/input/password"
+	input "gophkeeper/internal/client/tui/data/input/text"
 	"gophkeeper/internal/client/tui/tools/printer"
 	"time"
 
@@ -18,8 +18,8 @@ import (
 	"go.uber.org/zap"
 )
 
-// AddPasswordPage - TUI страница добавления нового пароля пользователя.
-func AddPasswordPage(ctx context.Context, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
+// EditTextPage - TUI страница изменения существующего текста пользователя.
+func EditTextPage(ctx context.Context, url string, client *resty.Client, stor storage.IEncryptedClientStorage,
 	info identity.IUserInfoStorage) func(app *app.App) tview.Primitive {
 
 	return func(app *app.App) tview.Primitive {
@@ -30,15 +30,13 @@ func AddPasswordPage(ctx context.Context, url string, client *resty.Client, stor
 			EditDate:   time.Now(),
 		}
 
-		// Создаю поля для заполенения данных пароля
+		// Создаю поля для заполенения данных текста
 		input.Fields(form, dataInfo)
 
-		form.AddButton("Сохранить", func() {
+		form.AddButton("Изменить", func() {
 			// проверяю наличие в приложении мастер пароля
 			authData, id := info.Get()
-			if authData.Password == "" || authData.Login == "" {
-				printer.Message(app, "password or login not set")
-
+			if authData.Password == "" {
 				// мастер пароль не установлен, возвращаю пользователя на страницу аутентификации.
 				app.SwitchTo(tui.Login)
 				return
@@ -50,36 +48,36 @@ func AddPasswordPage(ctx context.Context, url string, client *resty.Client, stor
 				logger.ClientLog.Error("encode data error", zap.String("error", error.Error(err)))
 				printer.Error(app, fmt.Sprintf("encode data error, %v", err))
 
-				app.SwitchTo(tui.AddPassword)
+				app.SwitchTo(tui.EditText)
 				return
 			}
 
-			// Сохраняю данные в хранилище
-			ok, err := handlers.SaveData(ctx, id, url, authData.Password, client, stor, userData)
+			// Меняю данные в хранилище на новые
+			ok, err := handlers.ReplaceData(ctx, id, url, authData.Password, client, stor, userData)
 			if err != nil {
-				logger.ClientLog.Error("save data error", zap.String("error", error.Error(err)))
-				printer.Error(app, fmt.Sprintf("save data error, %v", err))
+				logger.ClientLog.Error("replace data error", zap.String("error", error.Error(err)))
+				printer.Error(app, fmt.Sprintf("replace data error, %v", err))
 
-				app.SwitchTo(tui.AddPassword)
+				app.SwitchTo(tui.EditText)
 				return
 			}
 			if !ok {
-				logger.ClientLog.Error("data is not unique", zap.String("name", dataInfo.Name))
-				printer.Error(app, fmt.Sprintf("data is not unique, name %s", dataInfo.Name))
+				logger.ClientLog.Error("data is not exists", zap.String("name", dataInfo.Name))
+				printer.Error(app, fmt.Sprintf("data is not exists, name %s", dataInfo.Name))
 
-				app.SwitchTo(tui.AddPassword)
+				app.SwitchTo(tui.Edit)
 				return
 			}
 
 			// Печатаю сообщение об успешном сохранении данных
-			printer.Message(app, "data saved successfully")
+			printer.Message(app, "data replaced successfully")
 
 			// перенаправляю пользователя на страницу данных
-			app.SwitchTo(tui.Data)
+			app.SwitchTo(tui.Edit)
 		})
-		form.AddButton("Отмена", func() { app.SwitchTo(tui.Add) })
+		form.AddButton("Отмена", func() { app.SwitchTo(tui.Edit) })
 
-		form.SetBorder(true).SetTitle("Добавить пароль")
+		form.SetBorder(true).SetTitle("Изменить текст")
 		return form
 	}
 }

@@ -23,8 +23,8 @@ type DataInfo struct {
 	EditDate   time.Time
 }
 
-// AddBinaryFields - функция для заполения установки бинарных данных пользователем.
-func AddBinaryFields(form *tview.Form, dataInfo *DataInfo) {
+// Fields - функция для заполения установки бинарных данных пользователем.
+func Fields(form *tview.Form, dataInfo *DataInfo) {
 	form.AddInputField("Имя данных", "", 20, nil, func(text string) {
 		if text != "" {
 			dataInfo.Name = text // Разрешаю ввод, только если установлено имя данных

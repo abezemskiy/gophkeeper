@@ -1,4 +1,4 @@
-package add
+package edit
 
 import (
 	"gophkeeper/internal/client/tui"
@@ -7,26 +7,26 @@ import (
 	"github.com/rivo/tview"
 )
 
-// Data позволяет выбрать тип данных для добавления.
-func Data(app *app.App) tview.Primitive {
+// Edit позволяет выбрать тип данных для изменения.
+func Edit(app *app.App) tview.Primitive {
 	form := tview.NewForm()
 
 	form.AddDropDown("Тип данных", []string{"PASSWORD", "TEXT", "BINARY", "BANKCARD"}, 0, func(option string, _ int) {
 		switch option {
 		case "PASSWORD":
-			app.SwitchTo(tui.AddPassword)
+			app.SwitchTo(tui.EditPassword)
 		case "TEXT":
-			app.SwitchTo(tui.AddText)
+			app.SwitchTo(tui.EditText)
 		case "BINARY":
-			app.SwitchTo(tui.AddBinary)
+			app.SwitchTo(tui.EditBinary)
 		case "BANKCARD":
-			app.SwitchTo(tui.AddBankCard)
+			app.SwitchTo(tui.EditBankCard)
 		}
 	})
 
 	form.AddButton("Отмена", func() { app.SwitchTo(tui.Data) })
 
-	form.SetBorder(true).SetTitle("Добавить данные")
+	form.SetBorder(true).SetTitle("Изменить данные")
 
 	return form
 }

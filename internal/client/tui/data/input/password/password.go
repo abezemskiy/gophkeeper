@@ -20,8 +20,8 @@ type DataInfo struct {
 	EditDate   time.Time
 }
 
-// AddPasswordFields - функция для заполения данных пароля пользователем.
-func AddPasswordFields(form *tview.Form, dataInfo *DataInfo) {
+// Fields - функция для заполения данных пароля пользователем.
+func Fields(form *tview.Form, dataInfo *DataInfo) {
 	form.AddInputField("Имя данных", "", 20, nil, func(text string) { dataInfo.Name = text })
 	form.AddInputField("Логин", "", 20, nil, func(text string) { dataInfo.Pass.Login = text })
 	form.AddPasswordField("Пароль", "", 20, '*', func(text string) { dataInfo.Pass.Password = text })

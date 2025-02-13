@@ -20,6 +20,11 @@ import (
 	"gophkeeper/internal/client/tui/data/add/password"
 	"gophkeeper/internal/client/tui/data/add/text"
 	"gophkeeper/internal/client/tui/data/delete"
+	"gophkeeper/internal/client/tui/data/edit"
+	editBankCard "gophkeeper/internal/client/tui/data/edit/bankcard"
+	editBinary "gophkeeper/internal/client/tui/data/edit/binary"
+	editPass "gophkeeper/internal/client/tui/data/edit/password"
+	editText "gophkeeper/internal/client/tui/data/edit/text"
 	"gophkeeper/internal/client/tui/data/view"
 	"gophkeeper/internal/client/tui/home"
 	"gophkeeper/internal/client/tui/ident/authorize"
@@ -245,13 +250,38 @@ func createTUI(ctx context.Context, stor storage.IEncryptedClientStorage, ident 
 	})
 	// Добавляю страницу для добавления новых текстовых данных
 	prims = append(prims, app.Primitives{
-		Name: tui.AdddText,
+		Name: tui.AddText,
 		Prim: text.AddTextPage(ctx, netAddr+addDataPattern, &authClient, stor, info),
 	})
 	// Добавляю страницу для удаления данных пользователя
 	prims = append(prims, app.Primitives{
 		Name: tui.Delete,
 		Prim: delete.Delete(ctx, netAddr+deleteDataPattern, &authClient, stor, info),
+	})
+	// Добавляю страницу для изменения данных пользователя
+	prims = append(prims, app.Primitives{
+		Name: tui.Edit,
+		Prim: edit.Edit,
+	})
+	// Добавляю страницу для изменения данных банковской карты пользователя
+	prims = append(prims, app.Primitives{
+		Name: tui.EditBankCard,
+		Prim: editBankCard.EditBankcardPage(ctx, netAddr+replaceDataPattern, &authClient, stor, info),
+	})
+	// Добавляю страницу для изменения бинарных данных пользователя
+	prims = append(prims, app.Primitives{
+		Name: tui.EditBinary,
+		Prim: editBinary.EditBinaryPage(ctx, netAddr+replaceDataPattern, &authClient, stor, info),
+	})
+	// Добавляю страницу для изменения пароля пользователя
+	prims = append(prims, app.Primitives{
+		Name: tui.EditPassword,
+		Prim: editPass.EditPasswordPage(ctx, netAddr+replaceDataPattern, &authClient, stor, info),
+	})
+	// Добавляю страницу для изменения текста пользователя
+	prims = append(prims, app.Primitives{
+		Name: tui.EditText,
+		Prim: editText.EditTextPage(ctx, netAddr+replaceDataPattern, &authClient, stor, info),
 	})
 	// Добавляю приветственную страницу
 	prims = append(prims, app.Primitives{

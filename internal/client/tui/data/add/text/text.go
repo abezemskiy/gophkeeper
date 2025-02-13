@@ -31,7 +31,7 @@ func AddTextPage(ctx context.Context, url string, client *resty.Client, stor sto
 		}
 
 		// Создаю поля для заполенения данных пароля
-		input.AddTextFields(form, dataInfo)
+		input.Fields(form, dataInfo)
 
 		form.AddButton("Сохранить", func() {
 			// проверяю наличие в приложении мастер пароля
@@ -48,7 +48,7 @@ func AddTextPage(ctx context.Context, url string, client *resty.Client, stor sto
 				logger.ClientLog.Error("encode data error", zap.String("error", error.Error(err)))
 				printer.Error(app, fmt.Sprintf("encode data error, %v", err))
 
-				app.SwitchTo(tui.AddBankCard)
+				app.SwitchTo(tui.AddText)
 				return
 			}
 
@@ -58,14 +58,14 @@ func AddTextPage(ctx context.Context, url string, client *resty.Client, stor sto
 				logger.ClientLog.Error("save data error", zap.String("error", error.Error(err)))
 				printer.Error(app, fmt.Sprintf("save data error, %v", err))
 
-				app.SwitchTo(tui.AdddText)
+				app.SwitchTo(tui.AddText)
 				return
 			}
 			if !ok {
 				logger.ClientLog.Error("data is not unique", zap.String("name", dataInfo.Name))
 				printer.Error(app, fmt.Sprintf("data is not unique, name %s", dataInfo.Name))
 
-				app.SwitchTo(tui.AdddText)
+				app.SwitchTo(tui.AddText)
 				return
 			}
 

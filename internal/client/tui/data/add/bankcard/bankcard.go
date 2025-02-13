@@ -24,14 +24,14 @@ func AddBankcardPage(ctx context.Context, url string, client *resty.Client, stor
 
 	return func(app *app.App) tview.Primitive {
 		form := tview.NewForm()
-		// структура для введенной пары логин пароль
+		// структура для сохранения данных банковской карты
 		dataInfo := &input.DataInfo{
 			CreateDate: time.Now(),
 			EditDate:   time.Now(),
 		}
 
 		// Создаю поля для заполенения данных банковской карты
-		input.AddBankCardFields(form, dataInfo)
+		input.Fields(form, dataInfo)
 
 		form.AddButton("Сохранить", func() {
 			// проверяю наличие в приложении мастер пароля

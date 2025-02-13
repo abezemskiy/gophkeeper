@@ -21,8 +21,8 @@ type DataInfo struct {
 	EditDate   time.Time
 }
 
-// AddBankCardFields - функция для заполения данных банковской карты пользователем.
-func AddBankCardFields(form *tview.Form, dataInfo *DataInfo) {
+// Fields - функция для заполения данных банковской карты пользователем.
+func Fields(form *tview.Form, dataInfo *DataInfo) {
 	form.AddInputField("Имя данных", "", 20, func(text string, _ rune) bool {
 		return text != ""
 	}, func(text string) {

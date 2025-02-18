@@ -49,6 +49,7 @@ const (
 	replaceDataPattern   = "/api/client/data/replace"  // паттерн для замены старых данных на сервере новыми
 	conflictDataPattern  = "/api/client/data/conflict" // паттерн для обработки данных с потенциальным конфликтом
 	deleteDataPattern    = "/api/client/data/delete"   // паттерн для удаления данных
+	getDataPattern       = "/api/client/data/get"      // паттерн для получения данных от сервера
 )
 
 func main() {
@@ -147,10 +148,11 @@ func run(ctx context.Context, stor *pg.Store, info identity.IUserInfoStorage, cl
 			case <-ticker.C:
 				logger.ClientLog.Info("Start data synchronization with server")
 
-				err := synchronization.SynchronizeData(ctx, stor, info, &client, netAddr+addDataPattern, netAddr+conflictDataPattern)
+				err := synchronization.SynchronizeData(ctx, stor, info, &client, netAddr+addDataPattern, netAddr+conflictDataPattern, netAddr+getDataPattern)
 				if err != nil {
-					logger.ClientLog.Error("failed to synchronize data", zap.String("server address", netAddr))
+					logger.ClientLog.Error("failed to synchronize data", zap.String("server address", netAddr), zap.String("error", err.Error()))
 				}
+				logger.ClientLog.Debug("Successful data synchronization with server")
 			}
 		}
 

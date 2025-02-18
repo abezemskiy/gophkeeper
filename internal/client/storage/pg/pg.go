@@ -54,7 +54,7 @@ func (s Store) Bootstrap(ctx context.Context) error {
 		return fmt.Errorf("create unique index in auth table error, %w", err)
 	}
 
-	// создаю таблицу для хранения uplinks -----------------------------------------
+	// создаю таблицу для хранения зашифрованных данных -----------------------------------------
 	_, err = tx.ExecContext(ctx, `
 		CREATE TABLE IF NOT EXISTS user_data (
     		id SERIAL PRIMARY KEY,                 							-- Уникальный идентификатор записи

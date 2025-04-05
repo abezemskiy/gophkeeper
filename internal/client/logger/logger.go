@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"os"
 
 	"go.uber.org/zap"
@@ -27,6 +28,16 @@ func Initialize(level, logFile string) error {
 	// Определяю поток вывода логов
 	// если установлен файл, то направляю вывод логов в файл
 	if logFile != "" {
+		// Проверка существования файла
+		if _, err := os.Stat(logFile); os.IsNotExist(err) {
+			// если не существует — создаю пустой файл
+			f, err := os.Create(logFile)
+			if err != nil {
+				return fmt.Errorf("не удалось создать файл логов: %w", err)
+			}
+			f.Close()
+		}
+
 		// очищаю файл логов при старте
 		err := os.Truncate(logFile, 0)
 		if err != nil && !os.IsNotExist(err) {

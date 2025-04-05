@@ -1,5 +1,5 @@
 {
-    "address": "http://localhost:8085",
+    "address": "http://localhost:8080",
     "log_level": "info",
     "database_dsn": ""
 }

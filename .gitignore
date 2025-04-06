@@ -27,3 +27,7 @@ vendor/
 
 # Environment variables
 .env
+
+# Configuration files
+/db/server/init/
+/db/client/init/

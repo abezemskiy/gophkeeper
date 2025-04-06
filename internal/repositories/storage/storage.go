@@ -23,16 +23,10 @@ type (
 		DeleteEncryptedData(ctx context.Context, idUser, dataName string) (bool, error)
 	}
 
-	// Starter - интерфейс для инициализации хранилища с зашифрованными данными.
-	Starter interface {
-		Bootstrap(context.Context) error
-	}
-
 	// IEncryptedStorage - интерфейс хранения зашифрованных данных пользователей.
 	IEncryptedStorage interface {
 		EncryptedDataWriter
 		EncryptedDataReader
-		Starter
 		EncryptedDataDeleter
 	}
 )

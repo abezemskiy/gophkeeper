@@ -50,20 +50,6 @@ func (mr *MockIEncryptedClientStorageMockRecorder) AddEncryptedData(arg0, arg1, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AddEncryptedData", reflect.TypeOf((*MockIEncryptedClientStorage)(nil).AddEncryptedData), arg0, arg1, arg2, arg3)
 }
 
-// Bootstrap mocks base method.
-func (m *MockIEncryptedClientStorage) Bootstrap(arg0 context.Context) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Bootstrap", arg0)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// Bootstrap indicates an expected call of Bootstrap.
-func (mr *MockIEncryptedClientStorageMockRecorder) Bootstrap(arg0 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Bootstrap", reflect.TypeOf((*MockIEncryptedClientStorage)(nil).Bootstrap), arg0)
-}
-
 // ChangeStatusOfEncryptedData mocks base method.
 func (m *MockIEncryptedClientStorage) ChangeStatusOfEncryptedData(arg0 context.Context, arg1, arg2 string, arg3 int) (bool, error) {
 	m.ctrl.T.Helper()

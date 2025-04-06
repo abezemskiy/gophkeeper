@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"gophkeeper/internal/server/handlers"
 	"gophkeeper/internal/server/identity/auth"
 	"gophkeeper/internal/server/logger"
@@ -15,7 +14,6 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	_ "github.com/jackc/pgx/v5/stdlib"
 	"go.uber.org/zap"
 )
 
@@ -27,24 +25,11 @@ func main() {
 		log.Fatalf("failed to set global variables, %v", err)
 	}
 
-	// Подключение к базе данных
-	db, err := sql.Open("pgx", databaseDsn)
-	if err != nil {
-		log.Fatalf("Error connection to database: %v by address %s", err, databaseDsn)
-	}
-	defer db.Close()
-
-	// Проверка соединения с БД
 	ctx := context.Background()
-	err = db.PingContext(ctx)
-	if err != nil {
-		log.Fatalf("Error checking connection with database: %v\n", err)
-	}
 	// создаем экземпляр хранилища pg
-	stor := pg.NewStore(db)
-	err = stor.Bootstrap(ctx)
+	stor, err := pg.NewStore(ctx, netAddr)
 	if err != nil {
-		log.Fatalf("Error prepare database to work: %v\n", err)
+		log.Fatalf("Failed to create storage: %v\n", err)
 	}
 	// ------------------------------------------------------------------------------
 

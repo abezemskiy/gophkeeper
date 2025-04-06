@@ -3,10 +3,15 @@ package pg
 import (
 	"context"
 	"database/sql"
+	"embed"
+	"errors"
 	"fmt"
 	"gophkeeper/internal/repositories/data"
 	"gophkeeper/internal/repositories/identity"
 
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/postgres"
+	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/lib/pq"
 )
 
@@ -16,65 +21,48 @@ type Store struct {
 	conn *sql.DB
 }
 
-// NewStore - возвращает новый экземпляр PostgreSQL-хранилища.
-func NewStore(conn *sql.DB) *Store {
-	return &Store{
-		conn: conn,
+// NewStore - применяет миграции и возвращает новый экземпляр PostgreSQL-хранилища.
+func NewStore(ctx context.Context, dsn string) (*Store, error) {
+	if err := runMigrations(dsn); err != nil {
+		return nil, fmt.Errorf("failed to run DB migrations: %w", err)
 	}
+
+	// Подключение к базе данных
+	db, err := sql.Open("pgx", dsn)
+	if err != nil {
+		return nil, fmt.Errorf("error connection to database: %v by address %s", err, dsn)
+	}
+
+	// Проверка соединения с БД
+	err = db.PingContext(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error checking connection with database: %v", err)
+	}
+
+	return &Store{
+		conn: db,
+	}, nil
 }
 
-// Bootstrap - подготавливает БД к работе, создавая необходимы таблицы и индексы.
-func (s Store) Bootstrap(ctx context.Context) error {
-	// запускаю транзакцию
-	tx, err := s.conn.BeginTx(ctx, nil)
+//go:embed migrations/*.sql
+var migrationsDir embed.FS
+
+func runMigrations(dsn string) error {
+	d, err := iofs.New(migrationsDir, "migrations")
 	if err != nil {
-		return fmt.Errorf("begin transaction error, %w", err)
+		return fmt.Errorf("failed to return an iofs driver: %w", err)
 	}
 
-	// откат транзакции в случае ошибки
-	defer tx.Rollback()
-
-	// создаю таблицу для хранения данных пользователя -------------------------
-	_, err = tx.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS auth (
-			login varchar(128) PRIMARY KEY,
-			hash varchar(256),
-			id varchar(256)
-		)
-	`)
+	m, err := migrate.NewWithSourceInstance("iofs", d, dsn)
 	if err != nil {
-		return fmt.Errorf("create table auth error, %w", err)
+		return fmt.Errorf("failed to get a new migrate instance: %w", err)
 	}
-	// создаю уникальный индекс для логина
-	_, err = tx.ExecContext(ctx, `CREATE UNIQUE INDEX IF NOT EXISTS login ON auth (login)`)
-	if err != nil {
-		return fmt.Errorf("create unique index in auth table error, %w", err)
+	if err := m.Up(); err != nil {
+		if !errors.Is(err, migrate.ErrNoChange) {
+			return fmt.Errorf("failed to apply migrations to the DB: %w", err)
+		}
 	}
-
-	// создаю таблицу для хранения зашифрованных данных -----------------------------------------
-	_, err = tx.ExecContext(ctx, `
-		CREATE TABLE IF NOT EXISTS user_data (
-    		id SERIAL PRIMARY KEY,                 							-- Уникальный идентификатор записи
-    		user_id varchar(256) NOT NULL,                  				-- ID пользователя
-    		data_name varchar(128) NOT NULL,               					-- Имя данных
-    		encrypted_data BYTEA[],                							-- Массив зашифрованных данных
-    		status INT NOT NULL,                   							-- Поле статуса
-
-    		CONSTRAINT unique_user_data UNIQUE (user_id, data_name) 		-- Гарант уникальности имени данных для пользователя
-		)
-	`)
-
-	if err != nil {
-		return fmt.Errorf("create table user_data error, %w", err)
-	}
-	// создаю уникальный индекс для ID пользователя
-	_, err = tx.ExecContext(ctx, `CREATE INDEX IF NOT EXISTS user_id ON user_data (user_id)`)
-	if err != nil {
-		return fmt.Errorf("create unique index in user_data table error, %w", err)
-	}
-
-	// коммитим транзакцию
-	return tx.Commit()
+	return nil
 }
 
 // Disable - очищает БД, удаляя записи из таблиц.

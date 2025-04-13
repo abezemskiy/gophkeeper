@@ -1,0 +1,5 @@
+{
+    "address": "http://localhost:8080",
+    "log_level": "info",
+    "database_dsn": ""
+}

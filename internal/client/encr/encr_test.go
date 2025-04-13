@@ -1,9 +1,10 @@
 package encr
 
 import (
-	"gophkeeper/internal/repositories/data"
 	"testing"
 	"time"
+
+	"github.com/abezemskiy/gophkeeper/internal/repositories/data"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

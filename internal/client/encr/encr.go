@@ -5,9 +5,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"gophkeeper/internal/client/encr/tools/encryption"
-	"gophkeeper/internal/client/encr/tools/key"
-	"gophkeeper/internal/repositories/data"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/encr/tools/encryption"
+	"github.com/abezemskiy/gophkeeper/internal/client/encr/tools/key"
+	"github.com/abezemskiy/gophkeeper/internal/repositories/data"
 )
 
 // EncryptData - функция для шифрования пользовательских данных.

@@ -47,7 +47,7 @@ GophKeeper — это клиент-серверное приложение дл�
 ### Установка
 
 ```bash
-git clone https://github.com/AntonBezemskiy/gophkeeper.git
+git clone https://github.com/abezemskiy/gophkeeper.git
 cd gophkeeper
 ./run.sh
 ```
@@ -59,7 +59,7 @@ cd gophkeeper
 После запуска контейнеров выполните следующую команду для входа в клиентский контейнер и запуска TUI-интерфейса:
 
 ```bash
-docker exec -it gophkeeper-client ./client
+docker exec -it gophkeeper-client-app /app/bin/client
 ```
 
 ## 🔮 Тестирование

@@ -5,11 +5,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"gophkeeper/internal/client/identity"
-	"gophkeeper/internal/client/logger"
-	"gophkeeper/internal/client/storage"
-	"gophkeeper/internal/repositories/data"
 	"net/http"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/identity"
+	"github.com/abezemskiy/gophkeeper/internal/client/logger"
+	"github.com/abezemskiy/gophkeeper/internal/client/storage"
+	"github.com/abezemskiy/gophkeeper/internal/repositories/data"
 
 	"github.com/go-resty/resty/v2"
 	"go.uber.org/zap"

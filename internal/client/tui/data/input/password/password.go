@@ -4,9 +4,10 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"gophkeeper/internal/client/storage/data"
-	repoData "gophkeeper/internal/repositories/data"
 	"time"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/storage/data"
+	repoData "github.com/abezemskiy/gophkeeper/internal/repositories/data"
 
 	"github.com/rivo/tview"
 )

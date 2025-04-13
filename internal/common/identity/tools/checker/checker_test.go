@@ -1,8 +1,9 @@
 package checker
 
 import (
-	"gophkeeper/internal/common/identity/tools/hasher"
 	"testing"
+
+	"github.com/abezemskiy/gophkeeper/internal/common/identity/tools/hasher"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

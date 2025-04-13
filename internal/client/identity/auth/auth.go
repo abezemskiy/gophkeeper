@@ -2,11 +2,12 @@ package auth
 
 import (
 	"fmt"
-	"gophkeeper/internal/client/identity"
-	"gophkeeper/internal/common/identity/tools/hasher"
-	"gophkeeper/internal/common/identity/tools/header"
-	repoIdent "gophkeeper/internal/repositories/identity"
 	"net/http"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/identity"
+	"github.com/abezemskiy/gophkeeper/internal/common/identity/tools/hasher"
+	"github.com/abezemskiy/gophkeeper/internal/common/identity/tools/header"
+	repoIdent "github.com/abezemskiy/gophkeeper/internal/repositories/identity"
 
 	"github.com/go-resty/resty/v2"
 )

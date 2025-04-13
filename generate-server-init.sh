@@ -24,14 +24,29 @@ INIT_SQL=./db/server/init/0001_init.sql
 mkdir -p ./db/server/init
 
 cat > "$INIT_SQL" <<EOF
-CREATE USER ${SERVER_DB_USER}
-    PASSWORD '${SERVER_DB_PASSWORD}';
+DO \$\$
+BEGIN
+    IF NOT EXISTS (
+        SELECT FROM pg_catalog.pg_roles WHERE rolname = '${SERVER_DB_USER}'
+    ) THEN
+        CREATE USER "${SERVER_DB_USER}" PASSWORD '${SERVER_DB_PASSWORD}';
+    END IF;
+END
+\$\$;
 
-CREATE DATABASE ${SERVER_DB_NAME}
-    OWNER '${SERVER_DB_USER}'
-    ENCODING 'UTF8'
-    LC_COLLATE = 'en_US.utf8'
-    LC_CTYPE = 'en_US.utf8';
+DO \$\$
+BEGIN
+    IF NOT EXISTS (
+        SELECT FROM pg_database WHERE datname = '${SERVER_DB_NAME}'
+    ) THEN
+        CREATE DATABASE "${SERVER_DB_NAME}"
+            OWNER "${SERVER_DB_USER}"
+            ENCODING 'UTF8'
+            LC_COLLATE = 'en_US.utf8'
+            LC_CTYPE = 'en_US.utf8';
+    END IF;
+END
+\$\$;
 EOF
 
 echo "[✓] SQL-файл создан: $INIT_SQL"

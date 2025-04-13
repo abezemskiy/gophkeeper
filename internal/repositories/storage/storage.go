@@ -2,7 +2,8 @@ package storage
 
 import (
 	"context"
-	"gophkeeper/internal/repositories/data"
+
+	"github.com/abezemskiy/gophkeeper/internal/repositories/data"
 )
 
 // Интерфейсы для хранения данных пользователей.

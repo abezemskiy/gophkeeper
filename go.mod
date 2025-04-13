@@ -1,4 +1,4 @@
-module gophkeeper
+module github.com/abezemskiy/gophkeeper
 
 go 1.23.1
 

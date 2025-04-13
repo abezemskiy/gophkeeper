@@ -1,8 +1,9 @@
 package info
 
 import (
-	"gophkeeper/internal/client/identity"
 	"testing"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/identity"
 
 	"github.com/stretchr/testify/assert"
 )

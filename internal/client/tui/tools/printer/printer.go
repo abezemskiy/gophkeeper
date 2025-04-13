@@ -1,7 +1,7 @@
 package printer
 
 import (
-	"gophkeeper/internal/client/tui/app"
+	"github.com/abezemskiy/gophkeeper/internal/client/tui/app"
 
 	"github.com/rivo/tview"
 )

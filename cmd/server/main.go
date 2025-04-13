@@ -2,16 +2,17 @@ package main
 
 import (
 	"context"
-	"gophkeeper/internal/server/handlers"
-	"gophkeeper/internal/server/identity/auth"
-	"gophkeeper/internal/server/logger"
-	"gophkeeper/internal/server/storage/pg"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
+
+	"github.com/abezemskiy/gophkeeper/internal/server/handlers"
+	"github.com/abezemskiy/gophkeeper/internal/server/identity/auth"
+	"github.com/abezemskiy/gophkeeper/internal/server/logger"
+	"github.com/abezemskiy/gophkeeper/internal/server/storage/pg"
 
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
@@ -26,8 +27,9 @@ func main() {
 	}
 
 	ctx := context.Background()
+
 	// создаем экземпляр хранилища pg
-	stor, err := pg.NewStore(ctx, netAddr)
+	stor, err := pg.NewStore(ctx, databaseDsn)
 	if err != nil {
 		log.Fatalf("Failed to create storage: %v\n", err)
 	}

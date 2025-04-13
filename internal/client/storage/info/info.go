@@ -1,8 +1,9 @@
 package info
 
 import (
-	"gophkeeper/internal/client/identity"
 	"sync"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/identity"
 )
 
 // UserInfoStorage - потокобезопасная структура для хранения информации о пользователе (логин, мастер пароль, id) в оперативной памяти.

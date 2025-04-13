@@ -29,5 +29,5 @@ vendor/
 .env
 
 # Configuration files
-/db/server/init/
-/db/client/init/
+db/server/init/
+db/client/init/

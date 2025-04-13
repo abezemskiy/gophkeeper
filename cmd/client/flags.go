@@ -3,10 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
-	"gophkeeper/internal/client/storage/inmemory"
-	"gophkeeper/internal/server/config"
 	"log"
 	"os"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/storage/inmemory"
+	"github.com/abezemskiy/gophkeeper/internal/server/config"
 )
 
 var (

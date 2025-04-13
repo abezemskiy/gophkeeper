@@ -14,25 +14,25 @@ else
   echo "Создаём .env с параметрами для клиентской и серверной БД..."
 
   # Клиентская БД
-  POSTGRES_USER_CLIENT="client_$(generate_secret 6)"
-  POSTGRES_PASSWORD_CLIENT="$(generate_secret 16)"
+  POSTGRES_USER_CLIENT="client_psql_user$(generate_secret 6)"
+  POSTGRES_PASSWORD_CLIENT="client_psql_pass$(generate_secret 16)"
   POSTGRES_DB_CLIENT="gk_client"
 
-  CLIENT_DB_USER="$(generate_secret 6)"
-  CLIENT_DB_PASSWORD="$(generate_secret 16)"
-  CLIENT_DB_NAME="$(generate_secret 6)"
+  CLIENT_DB_USER="client_db_user$(generate_secret 6)"
+  CLIENT_DB_PASSWORD="client_db_pass$(generate_secret 16)"
+  CLIENT_DB_NAME="client_db_name$(generate_secret 6)"
 
   # Серверная БД
-  POSTGRES_USER_SERVER="server_$(generate_secret 6)"
-  POSTGRES_PASSWORD_SERVER="$(generate_secret 16)"
+  POSTGRES_USER_SERVER="server_psql_user$(generate_secret 6)"
+  POSTGRES_PASSWORD_SERVER="server_psql_pass$(generate_secret 16)"
   POSTGRES_DB_SERVER="gk_server"
 
-  SERVER_DB_USER="$(generate_secret 6)"
-  SERVER_DB_PASSWORD="$(generate_secret 16)"
-  SERVER_DB_NAME="$(generate_secret 6)"
+  SERVER_DB_USER="server_db_user$(generate_secret 6)"
+  SERVER_DB_PASSWORD="server_db_pass$(generate_secret 16)"
+  SERVER_DB_NAME="server_db_name$(generate_secret 6)"
 
   # Конфигурация сервера
-  SERVER_SECRET_KEY="$(generate_secret 16)"
+  SERVER_SECRET_KEY="server_key$(generate_secret 16)"
 
   cat > "$ENV_FILE" <<EOF
 # Client DB

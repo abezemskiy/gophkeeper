@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"gophkeeper/internal/client/tui/app"
+	"github.com/abezemskiy/gophkeeper/internal/client/tui/app"
 
 	"github.com/rivo/tview"
 	"github.com/stretchr/testify/assert"

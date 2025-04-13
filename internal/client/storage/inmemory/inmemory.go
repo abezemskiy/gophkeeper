@@ -3,12 +3,13 @@ package inmemory
 import (
 	"context"
 	"fmt"
-	"gophkeeper/internal/client/encr"
-	"gophkeeper/internal/client/identity"
-	"gophkeeper/internal/client/storage"
-	"gophkeeper/internal/repositories/data"
 	"sync"
 	"time"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/encr"
+	"github.com/abezemskiy/gophkeeper/internal/client/identity"
+	"github.com/abezemskiy/gophkeeper/internal/client/storage"
+	"github.com/abezemskiy/gophkeeper/internal/repositories/data"
 )
 
 // updatingPeriod - период обновления расщифрованных данных пользователя в секундах.

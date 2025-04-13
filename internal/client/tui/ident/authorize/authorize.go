@@ -3,12 +3,13 @@ package authorize
 import (
 	"context"
 	"fmt"
-	"gophkeeper/internal/client/handlers"
-	"gophkeeper/internal/client/identity"
-	"gophkeeper/internal/client/logger"
-	"gophkeeper/internal/client/tui"
-	"gophkeeper/internal/client/tui/app"
-	"gophkeeper/internal/client/tui/tools/printer"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/handlers"
+	"github.com/abezemskiy/gophkeeper/internal/client/identity"
+	"github.com/abezemskiy/gophkeeper/internal/client/logger"
+	"github.com/abezemskiy/gophkeeper/internal/client/tui"
+	"github.com/abezemskiy/gophkeeper/internal/client/tui/app"
+	"github.com/abezemskiy/gophkeeper/internal/client/tui/tools/printer"
 
 	"github.com/rivo/tview"
 	"go.uber.org/zap"

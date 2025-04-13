@@ -1,9 +1,10 @@
 package binary
 
 import (
-	"gophkeeper/internal/client/storage/data"
 	"os"
 	"testing"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/storage/data"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

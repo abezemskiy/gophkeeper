@@ -3,14 +3,15 @@ package auth
 import (
 	"encoding/json"
 	"errors"
-	"gophkeeper/internal/client/identity"
-	"gophkeeper/internal/common/identity/tools/hasher"
-	"gophkeeper/internal/common/identity/tools/header"
-	repoIdent "gophkeeper/internal/repositories/identity"
-	"gophkeeper/internal/repositories/mocks"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/identity"
+	"github.com/abezemskiy/gophkeeper/internal/common/identity/tools/hasher"
+	"github.com/abezemskiy/gophkeeper/internal/common/identity/tools/header"
+	repoIdent "github.com/abezemskiy/gophkeeper/internal/repositories/identity"
+	"github.com/abezemskiy/gophkeeper/internal/repositories/mocks"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-resty/resty/v2"

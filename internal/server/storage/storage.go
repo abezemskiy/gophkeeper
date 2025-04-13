@@ -2,8 +2,9 @@ package storage
 
 import (
 	"context"
-	"gophkeeper/internal/repositories/data"
-	repoStorage "gophkeeper/internal/repositories/storage"
+
+	"github.com/abezemskiy/gophkeeper/internal/repositories/data"
+	repoStorage "github.com/abezemskiy/gophkeeper/internal/repositories/storage"
 )
 
 // Интерфейсы для хранения зашифрованных данных пользователей на сервере.

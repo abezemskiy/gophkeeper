@@ -6,12 +6,14 @@ import (
 	"embed"
 	"errors"
 	"fmt"
-	"gophkeeper/internal/repositories/data"
-	"gophkeeper/internal/repositories/identity"
+
+	"github.com/abezemskiy/gophkeeper/internal/repositories/data"
+	"github.com/abezemskiy/gophkeeper/internal/repositories/identity"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/lib/pq"
 )
 

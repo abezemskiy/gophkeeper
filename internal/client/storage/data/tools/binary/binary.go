@@ -2,10 +2,11 @@ package binary
 
 import (
 	"fmt"
-	"gophkeeper/internal/client/storage/data"
 	"net/http"
 	"os"
 	"path/filepath"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/storage/data"
 )
 
 // GetFileType - функция для определения типа файла.

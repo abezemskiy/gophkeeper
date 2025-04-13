@@ -2,9 +2,10 @@ package storage
 
 import (
 	"context"
-	"gophkeeper/internal/client/identity"
-	"gophkeeper/internal/repositories/data"
-	repoStorage "gophkeeper/internal/repositories/storage"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/identity"
+	"github.com/abezemskiy/gophkeeper/internal/repositories/data"
+	repoStorage "github.com/abezemskiy/gophkeeper/internal/repositories/storage"
 )
 
 // Описание интерфейса для постоянно хранилища зашифрованных данных клиента.

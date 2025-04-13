@@ -1,10 +1,11 @@
 package auth
 
 import (
-	"gophkeeper/internal/common/identity/tools/token"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/abezemskiy/gophkeeper/internal/common/identity/tools/token"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/stretchr/testify/assert"

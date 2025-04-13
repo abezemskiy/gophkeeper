@@ -3,12 +3,13 @@ package inmemory
 import (
 	"context"
 	"errors"
-	"gophkeeper/internal/client/encr"
-	"gophkeeper/internal/client/identity"
-	"gophkeeper/internal/repositories/data"
-	"gophkeeper/internal/repositories/mocks"
 	"testing"
 	"time"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/encr"
+	"github.com/abezemskiy/gophkeeper/internal/client/identity"
+	"github.com/abezemskiy/gophkeeper/internal/repositories/data"
+	"github.com/abezemskiy/gophkeeper/internal/repositories/mocks"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"

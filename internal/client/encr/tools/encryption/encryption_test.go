@@ -1,8 +1,9 @@
 package encryption
 
 import (
-	"gophkeeper/internal/client/encr/tools/random"
 	"testing"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/encr/tools/random"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

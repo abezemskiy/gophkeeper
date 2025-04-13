@@ -7,7 +7,8 @@ import (
 	"crypto/cipher"
 	"errors"
 	"fmt"
-	"gophkeeper/internal/client/encr/tools/random"
+
+	"github.com/abezemskiy/gophkeeper/internal/client/encr/tools/random"
 )
 
 // EncryptAES256 - функция для шифрования данных с помощью алгоритма AES256.

@@ -4,10 +4,11 @@ package auth
 import (
 	"context"
 	"fmt"
-	"gophkeeper/internal/common/identity/tools/header"
-	"gophkeeper/internal/common/identity/tools/token"
-	"gophkeeper/internal/server/logger"
 	"net/http"
+
+	"github.com/abezemskiy/gophkeeper/internal/common/identity/tools/header"
+	"github.com/abezemskiy/gophkeeper/internal/common/identity/tools/token"
+	"github.com/abezemskiy/gophkeeper/internal/server/logger"
 
 	"go.uber.org/zap"
 )

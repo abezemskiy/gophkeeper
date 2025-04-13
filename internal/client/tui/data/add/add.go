@@ -1,8 +1,8 @@
 package add
 
 import (
-	"gophkeeper/internal/client/tui"
-	"gophkeeper/internal/client/tui/app"
+	"github.com/abezemskiy/gophkeeper/internal/client/tui"
+	"github.com/abezemskiy/gophkeeper/internal/client/tui/app"
 
 	"github.com/rivo/tview"
 )

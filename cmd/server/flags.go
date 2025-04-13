@@ -3,11 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
-	"gophkeeper/internal/common/identity/tools/token"
-	"gophkeeper/internal/server/config"
 	"log"
 	"os"
 	"strconv"
+
+	"github.com/abezemskiy/gophkeeper/internal/common/identity/tools/token"
+	"github.com/abezemskiy/gophkeeper/internal/server/config"
 )
 
 var (
